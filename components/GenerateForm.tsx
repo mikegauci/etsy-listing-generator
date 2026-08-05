@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { CopyField } from "./CopyField";
 import { formatTagsLine, parseTagsLine } from "@/lib/tags";
 import { PRODUCT_TYPES } from "@/lib/types";
@@ -32,6 +33,7 @@ function progressLabel(pct: number): string {
 }
 
 export function GenerateForm() {
+  const searchParams = useSearchParams();
   const [subject, setSubject] = useState("");
   const [productType, setProductType] = useState<string>(PRODUCT_TYPES[0]);
   const [colors, setColors] = useState("Black, White");
@@ -40,6 +42,11 @@ export function GenerateForm() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const fromQuery = searchParams.get("subject");
+    if (fromQuery) setSubject(fromQuery);
+  }, [searchParams]);
 
   useEffect(() => {
     return () => {

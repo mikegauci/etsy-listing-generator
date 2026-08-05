@@ -60,7 +60,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — password gate, then Generate / Shop data / History.
+Open [http://localhost:3000](http://localhost:3000) — password gate, then Generate / Titles / Shop data / History.
 
 ## Mock vs OpenAI
 
@@ -80,6 +80,7 @@ Marketplace search (used during Generate) only needs the API key. Syncing your o
 | Route | Purpose |
 |---|---|
 | `/` | Generate listing (title, tags, description, media alt texts) |
+| `/titles` | Checklist of community + brand listing titles (progress in Supabase) |
 | `/shop-data` | Connect Etsy, sync listings, keyword stats |
 | `/history` | Past generations |
 | `/login` | Password gate |

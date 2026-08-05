@@ -9,6 +9,7 @@ import {
   formatCustomFieldsNotes,
   MEDIA_ALT_TEXT_MAX,
 } from "./product-options";
+import { ensureCustomTitlePrefix } from "./listing-title";
 
 function truncate(str: string, max: number): string {
   if (str.length <= max) return str;
@@ -138,8 +139,10 @@ export function generateMockListing(
       ? "T-Shirt"
       : product.charAt(0).toUpperCase() + product.slice(1);
   const primaryColor = colors.split(",")[0]?.trim() || "Black";
-  const titleCore = `Custom ${subject} ${garment}, ${primaryColor}, Car Guy Gift`;
-  const title = truncate(titleCore.replace(/\s+/g, " ").trim(), 140);
+  const subjectForTitle = subject.replace(/^custom\s+/i, "").trim() || subject;
+  const title = ensureCustomTitlePrefix(
+    `${subjectForTitle} ${garment}, ${primaryColor}, Car Guy Gift`
+  );
 
   const subjectWords = subject.split(/\s+/).filter(Boolean);
   const shortSubject = subjectWords.slice(0, 2).join(" ") || subject;

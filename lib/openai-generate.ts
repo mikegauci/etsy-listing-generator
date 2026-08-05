@@ -11,6 +11,7 @@ import {
   MEDIA_ALT_TEXT_MAX,
   MEDIA_ALT_TEXT_MIN,
 } from "./product-options";
+import { ensureCustomTitlePrefix } from "./listing-title";
 
 const LISTING_JSON_SCHEMA = {
   name: "etsy_listing",
@@ -104,8 +105,9 @@ function buildSystemPrompt(): string {
 - Before the CTA: invite buyers to message/contact the shop for more info — e.g. multiple cars in one artwork, adding people or pets, or any other questions (required in every description).
 - End with a shop visit CTA — REQUIRED: invite buyers to browse the Motor Element store for more custom car apparel and related products (word naturally, e.g. "Explore our shop for more designs" — not stiff or salesy).
 - Title (follow Etsy’s official tips + shop voice + marketplace winners):
+  • ALWAYS start with the word "Custom" as the first word (e.g. "Custom Ford Mustang T-Shirt, Black White, Car Guy Gift"). Never lead with the niche, product type, or any other word.
   • Clearly state what you’re selling (t-shirt, hoodie, mug, etc.) — not vague “art” alone.
-  • Put the most important traits upfront in the first ~40 chars: niche subject + product type + 1–2 concrete traits (e.g. color options like Black/White when relevant).
+  • Put the most important traits upfront in the first ~40 chars after Custom: niche subject + product type + 1–2 concrete traits (e.g. color options like Black/White when relevant).
   • Keep it scannable: aim for under 15 words total; use commas to separate trait groups like existing shop titles.
   • Do NOT repeat the same word twice; move subjective hype (“perfect”, “beautiful”, “amazing”) to the description.
   • Only mention holidays/recipients when essential to the item (e.g. “Father’s Day gift” only if that’s the hook).
@@ -206,7 +208,7 @@ ${trendingBlock}
 Marketplace title patterns (borrow phrasing patterns that fit Motor Element — do not copy brand names):
 ${marketplaceTitles || "(none)"}
 
-Title templates from YOUR shop (adapt for "${input.subject}" — follow Etsy title rules above, not keyword stuffing):
+Title templates from YOUR shop (adapt for "${input.subject}" — first word MUST be Custom; follow Etsy title rules above, not keyword stuffing):
 ${titleTemplates || "(none — e.g. Custom Ford Mustang T-Shirt, Black White, Car Guy Gift)"}
 
 Description structure (description field only — NO prices anywhere in description):
@@ -270,7 +272,7 @@ export async function generateWithOpenAI(
     throw new Error("OPENAI_API_KEY is not set");
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-4.1";
+  const model = process.env.OPENAI_MODEL || "gpt-5.6";
   console.log("[openai] model:", model);
   console.log("[openai] comps in prompt:", referenced.length);
   console.log("[openai] marketplace comps:", marketplace.length);
@@ -357,6 +359,8 @@ export async function generateWithOpenAI(
 
   parsed.description = stripPricesFromDescription(parsed.description)
     .replace(/—/g, "-");
+
+  parsed.title = ensureCustomTitlePrefix(parsed.title || "");
 
   return parsed;
 }
