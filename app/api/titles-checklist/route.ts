@@ -57,7 +57,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    const doneCategories = [...new Set(parsed.data.doneCategories)];
+    const doneCategories = Array.from(new Set(parsed.data.doneCategories));
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("title_checklist")
