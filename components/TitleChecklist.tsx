@@ -250,8 +250,9 @@ export function TitleChecklist() {
         <div>
           <h1 className="text-xl font-semibold text-zinc-100">Titles</h1>
           <p className="mt-1 max-w-xl text-sm text-zinc-500">
-            Checklist of listing titles to create. Community pages use 9 brands;
-            brand pages use 9 models — so each listing feels distinct.
+            Checklist of listing titles to create. Community pages use 9
+            brand+model mockups; brand pages use 9 models — so each listing
+            feels distinct.
           </p>
         </div>
         <div className="flex gap-1 rounded border border-zinc-800 p-0.5">
@@ -289,7 +290,7 @@ export function TitleChecklist() {
         <>
           <Section
             title="Community listings"
-            hint="Use 9 different brands in mockups — click a brand for Google Images"
+            hint="Use 9 different brand + models in mockups — click for Google Images"
             categories={COMMUNITY_LISTINGS}
             state={state}
             filter={filter}
