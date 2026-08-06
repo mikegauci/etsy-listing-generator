@@ -110,13 +110,13 @@ function buildSystemPrompt(): string {
 ## Description readability (required — Etsy tips)
 - Use short paragraphs OR bullets. Break essentials into bullets: materials, sizes, colors, personalization, care.
 - Proper punctuation; no ALL CAPS; no keyword stuffing.
-- Emojis: optional on section headers only (0–1 per header). Do NOT emoji-spam bullets or body sentences.
+- Emojis: REQUIRED on every section header (exactly 1 leading emoji + space + title). Do NOT put emojis in the opening paragraph, bullets, or body sentences.
 - Avoid long prose blocks. If a section needs more than 2 sentences, convert the rest to bullets.
 - Clear structure helps shoppers decide faster on mobile.
 
 ## Description formatting (required)
 - After the short opening paragraph, separate major sections with a divider line: \`____________________\`
-- Plain section headings (emoji optional), e.g. \`Mockup preview\`, \`Front or back artwork\`, \`Details\`, \`Backgrounds\`, \`Personalization\`, \`Materials & care\`, \`Questions?\`, \`Explore the shop\`
+- Section headings MUST start with one emoji, e.g. \`👀 Mockup preview\`, \`👕 Front or back artwork\`, \`✨ Details\`, \`🌆 Backgrounds\`, \`📸 Personalization\`, \`🧺 Materials & care\`, \`💬 Questions?\`, \`🏪 Explore the shop\`
 - Keep Motor Element voice; formatting should feel clean and scannable, not dense or meme-y.
 
 ## Catalog voice (mirror YOUR shop examples)
@@ -243,30 +243,30 @@ ${titleTemplates || `(none — e.g. Custom Ford Mustang T-Shirt, Personalized Ca
 
 Niche tags only (tags field): return 3 niche-specific tags for "${input.subject}" (≤${TAG_MAX_CHARS} chars each; optional 4th backup OK). The system appends these evergreen tags automatically — do not include them: ${EVERGREEN_TAGS.join(", ")}
 
-Description structure (description field only — NO prices anywhere in description). Keep it easy to read: short opening, then bullets under each heading. No walls of text, no ALL CAPS, minimal emoji.
+Description structure (description field only — NO prices anywhere in description). Keep it easy to read: short opening, then bullets under each heading. No walls of text, no ALL CAPS. One emoji on each section header only.
 1) One short keyword-first opening paragraph (subject + product + gift intent) — first 160 chars matter most; NO emoji
-2) Divider \`____________________\`, then plain section headings
-3) Mockup preview — bullets: mockup before print; request changes; full refund if they dislike the artwork
-4) Front or back artwork — bullets: front OR back (choose at checkout); contact shop for both sides. Do NOT say both sides are included by default
-5) Details — bullets for product, style, colors, sizes
-6) Backgrounds — short bullets (no prices): ${backgroundMarketing}
-7) Personalization — bullets: up to 4 vehicle photos; optional custom text
-8) Materials & care — short bullets
-9) Questions? — one short sentence inviting messages (multiple cars, people/pets, etc.)
-10) Explore the shop — one short sentence + soft CTA
+2) Divider \`____________________\`, then section headings with one leading emoji each
+3) 👀 Mockup preview — bullets: mockup before print; request changes; full refund if they dislike the artwork
+4) 👕 Front or back artwork — bullets: front OR back (choose at checkout); contact shop for both sides. Do NOT say both sides are included by default
+5) ✨ Details — bullets for product, style, colors, sizes
+6) 🌆 Backgrounds — short bullets (no prices): ${backgroundMarketing}
+7) 📸 Personalization — bullets: up to 4 vehicle photos; optional custom text
+8) 🧺 Materials & care — short bullets
+9) 💬 Questions? — one short sentence inviting messages (multiple cars, people/pets, etc.)
+10) 🏪 Explore the shop — one short sentence + soft CTA
 Example rhythm:
 \`\`\`
 [1–2 sentence opening — no emoji]
 
 ____________________
 
-Mockup preview
+👀 Mockup preview
 • ...
 • ...
 
 ____________________
 
-Front or back artwork
+👕 Front or back artwork
 • ...
 \`\`\`
 If shop example descriptions show prices, omit those prices — follow structure/voice only.
