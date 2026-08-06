@@ -12,6 +12,8 @@ import {
   MEDIA_ALT_TEXT_MIN,
 } from "./product-options";
 import { ensureCustomTitlePrefix } from "./listing-title";
+import { EVERGREEN_TAGS, TAG_MAX_CHARS } from "./tags";
+import { ensureTitleKeywordsInTags } from "./title-tag-overlap";
 
 const LISTING_JSON_SCHEMA = {
   name: "etsy_listing",
@@ -24,8 +26,8 @@ const LISTING_JSON_SCHEMA = {
       tags: {
         type: "array",
         items: { type: "string" },
-        minItems: 13,
-        maxItems: 13,
+        minItems: 3,
+        maxItems: 4,
       },
       description: { type: "string" },
       altText: { type: "string" },
@@ -79,41 +81,54 @@ function buildSystemPrompt(): string {
 
 ## Compare marketplace vs your shop (required)
 - You receive YOUR shop examples AND live marketplace comps for the same niche keyword.
-- Titles & tags: prefer patterns that appear often among high-engagement marketplace comps (views/favorites) when they still fit Motor Element (custom car illustration apparel, gift framing). Do not copy another shop's brand name or unique slogans.
-- Description: ALWAYS keep Motor Element process/voice from YOUR shop examples (mockup preview, front/back artwork, backgrounds, contact, shop CTA). Never copy competitor process, policies, or digital-download language.
+- Titles & tags: prefer patterns that appear often among high-engagement marketplace comps (views/favorites) when they still fit Motor Element (custom car photo shirts, gift framing). Do not copy another shop's brand name or unique slogans.
+- Description: ALWAYS keep Motor Element process/voice from YOUR shop examples (mockup preview, front or back artwork, backgrounds, contact, shop CTA). Never copy competitor process, policies, or digital-download language.
 - In seoNotes: briefly say which marketplace vs shop patterns drove the title and tags.
 
 ## 2026 Etsy description SEO (must follow)
-- First ~160 characters are highest priority (Etsy snippet + Google meta). Lead with the niche primary keyword + product type + buyer intent in sentence 1 (e.g. "Custom Ford Mustang t-shirt" / "Ford car guy gift"), NOT a vague hype line. Keep the opening paragraph plain text (no emoji in the first ~160 chars).
+- First ~160 characters are highest priority (Etsy snippet + Google meta). Lead with the niche primary keyword + product type + buyer intent in sentence 1 (e.g. "Custom Ford Mustang t-shirt"). Keep the opening paragraph plain text (no emoji in the first ~160 chars).
 - Align title, opening description, and tags on the SAME primary niche phrase.
 - Write natural complete sentences; weave long-tail keywords into useful info. NEVER dump comma-separated keyword lists at the bottom.
-- Aim ~250–400 words. Short paragraphs + bullets for variants (mobile-first).
+- Aim ~200–350 words. Prefer short paragraphs (1–2 sentences) and bullets — never a wall of text.
 - Do not start with "Welcome to my shop" or empty greetings.
 
+## Description readability (required — Etsy tips)
+- Use short paragraphs OR bullets. Break essentials into bullets: materials, sizes, colors, personalization, care.
+- Proper punctuation; no ALL CAPS; no keyword stuffing.
+- Emojis: optional on section headers only (0–1 per header). Do NOT emoji-spam bullets or body sentences.
+- Avoid long prose blocks. If a section needs more than 2 sentences, convert the rest to bullets.
+- Clear structure helps shoppers decide faster on mobile.
+
 ## Description formatting (required)
-- After the opening paragraph, separate major sections with a divider line using underscores or slashes, e.g. \`____________________\` or \`/ / / / / / / / / /\` (pick one style and stay consistent).
-- Start section headings with a relevant emoji + short label, e.g. \`✨ Mockup preview\`, \`🎨 Front & back artwork\`, \`🖼️ Backgrounds\`, \`👕 Details\`, \`✏️ Personalization\`, \`🧼 Materials & care\`, \`💬 Questions?\`, \`🏪 Explore the shop\`.
-- Use a light sprinkle of emojis in section headers and 1–2 bullets where it helps scanability — do not emoji-spam every sentence.
-- Keep Motor Element voice; formatting should feel like a polished Etsy listing, not a meme dump.
+- After the short opening paragraph, separate major sections with a divider line: \`____________________\`
+- Plain section headings (emoji optional), e.g. \`Mockup preview\`, \`Front or back artwork\`, \`Details\`, \`Backgrounds\`, \`Personalization\`, \`Materials & care\`, \`Questions?\`, \`Explore the shop\`
+- Keep Motor Element voice; formatting should feel clean and scannable, not dense or meme-y.
 
 ## Catalog voice (mirror YOUR shop examples)
 - Opening: keyword-rich hook like your top Custom Car Shirt / Hoodie listings — niche subject named early, gift framing, what you do (vector / cartoon-style custom art from photos).
 - Then: what makes it special — we send a mockup to preview before anything goes to printing; full refund if you do not like the artwork (state this clearly in the description).
-- Then: artwork placement — REQUIRED: custom artwork is printed on the front and back of the garment (state clearly; rephrase naturally).
+- Then: artwork placement — REQUIRED: custom artwork is printed on the front OR back of the garment (buyer chooses one side). If they want both sides, they should contact the shop. Never say it is printed on both front and back by default.
 - Then: Background options — REQUIRED copy: buyers can choose from 9 different backgrounds, no background, or a customized background (no prices in description). You may name theme examples from the listing; do not list dollar amounts.
 - Then: colors/sizes + materials/care + soft CTA. Keep Motor Element process language (mockup preview, approve/request changes, photo via order).
 - Before the CTA: invite buyers to message/contact the shop for more info — e.g. multiple cars in one artwork, adding people or pets, or any other questions (required in every description).
 - End with a shop visit CTA — REQUIRED: invite buyers to browse the Motor Element store for more custom car apparel and related products (word naturally, e.g. "Explore our shop for more designs" — not stiff or salesy).
 - Title (follow Etsy’s official tips + shop voice + marketplace winners):
-  • ALWAYS start with the word "Custom" as the first word (e.g. "Custom Ford Mustang T-Shirt, Black White, Car Guy Gift"). Never lead with the niche, product type, or any other word.
+  • ALWAYS start with the word "Custom" as the first word (e.g. "Custom Ford Mustang T-Shirt, Personalized Car Photo Shirt, Gift for Him"). Never lead with the niche, product type, or any other word.
   • Clearly state what you’re selling (t-shirt, hoodie, mug, etc.) — not vague “art” alone.
-  • Put the most important traits upfront in the first ~40 chars after Custom: niche subject + product type + 1–2 concrete traits (e.g. color options like Black/White when relevant).
-  • Keep it scannable: aim for under 15 words total; use commas to separate trait groups like existing shop titles.
+  • Put the most important traits upfront in the first ~40 chars after Custom: niche subject + product type.
+  • Prefer close to 14 words (Etsy title tip) — aim for 10–14 natural words. Hard max 140 characters.
+  • Preferred title pattern: Custom {niche} {Product}, Personalized Car Photo Shirt, Gift for Him.
+  • NEVER keyword-stuff recipients or occasions into one blob (forbidden: "Birthday Gift for Him Dad Boyfriend Men", "Gift for Him Dad Boyfriend"). One clean gift phrase is enough — evergreen tags already cover dad/boyfriend.
+  • If the niche is long, keep Custom + niche + product first and drop the trailing gift phrase so you stay ≤14.
+  • NEVER include garment colors in the title or tags (no Black, White, color names, or color lists). Colors belong only in the description variants section.
+  • NEVER put description concepts in the title: no "front", "back", "front & back", "apparel", "illustration", "vehicle", "owners", or "guy". Front/back print belongs only in the description artwork section.
+  • Keep it scannable with commas separating trait groups like existing shop titles.
   • Do NOT repeat the same word twice; move subjective hype (“perfect”, “beautiful”, “amazing”) to the description.
   • Only mention holidays/recipients when essential to the item (e.g. “Father’s Day gift” only if that’s the hook).
   • Never include price, shipping, discounts, or sales language in the title.
-  • Max 140 characters; match comma rhythm of shop examples while obeying the rules above.
-- Tags: exactly 13, ≤20 chars, no duplicate words across tags; reuse successful tag patterns from niche/product comps and marketplace comps. Prefer trending Etsy search terms when they fit naturally.
+  • Match comma rhythm of shop examples while obeying the rules above.
+- Tags: return ONLY 3 niche-specific tags for this subject (each ≤20 chars; a 4th backup is OK). Do NOT include the evergreen set below — the system always appends all 10. Niche tags MUST echo important title keywords (make/model + product/gift angles from the title). Prefer trending Etsy search terms and marketplace tag patterns when they fit. Exact-phrase duplicates are not allowed; shared words across tags are OK. NEVER use color names in tags.
+- Fixed evergreen tags (appended automatically — do not output these): ${EVERGREEN_TAGS.join(", ")}
 - If niche-specific shop examples exist (e.g. Ford), blend those with marketplace phrasing. If none, use marketplace title/tag patterns + top Custom Car product-type shop listings as the structural template.
 - Avoid restricted/trademarked claims; do not invent licensed OEM branding.
 - description field: NEVER include prices, dollar amounts, or "+$X" fees — mention backgrounds and options by name only.
@@ -197,7 +212,7 @@ ${trendingKeywords.join(", ")}`
 
 Subject / niche keywords (MUST appear in title + first ~160 chars of description): ${input.subject}
 Product type: ${input.productType}
-Color/variants text: ${input.colors || "Black, White"}
+Color/variants text (description / options only — NEVER put colors in title or tags): ${input.colors || "Black, White"}
 Base / No-background price (USD): ${input.price != null ? input.price : 43}
 Extra seller notes: ${input.optionsNotes || "none"}
 Reference media (context only): ${media}
@@ -208,33 +223,36 @@ ${trendingBlock}
 Marketplace title patterns (borrow phrasing patterns that fit Motor Element — do not copy brand names):
 ${marketplaceTitles || "(none)"}
 
-Title templates from YOUR shop (adapt for "${input.subject}" — first word MUST be Custom; follow Etsy title rules above, not keyword stuffing):
-${titleTemplates || "(none — e.g. Custom Ford Mustang T-Shirt, Black White, Car Guy Gift)"}
+Title templates from YOUR shop (adapt for "${input.subject}" — first word MUST be Custom; aim for 10–14 clean words, max 140 chars; NEVER stuff Birthday/Dad/Boyfriend/Men into one phrase; NEVER include colors, front/back print language, apparel, illustration, vehicle, owners, or guy; follow Etsy title rules above):
+${titleTemplates || "(none — e.g. Custom Ford Mustang T-Shirt, Personalized Car Photo Shirt, Gift for Him)"}
 
-Description structure (description field only — NO prices anywhere in description):
-1) Keyword-first opening (subject + product + gift intent) — first 160 chars matter most; NO emoji in this opening block
-2) Divider line (underscores OR slashes), then emoji section headers for the rest
-3) ✨ Mockup preview before printing + full refund if they do not like the artwork (required)
-4) 🎨 Front and back artwork (required — state that custom artwork is on the front and back of the garment)
-5) 🖼️ Background options (required — weave in naturally, no prices): ${backgroundMarketing}
-   ✏️ Personalization: upload up to 4 vehicle photos; optional custom text (no fees stated)
-6) 👕 Colors/sizes + 🧼 materials/care
-7) 💬 Contact us / message the shop for more info — multiple cars in one artwork, people or pets in the design, or any other questions (required)
-8) 🏪 Invite buyers to visit/browse the Motor Element shop for more custom car products (required — natural wording)
-9) Soft CTA (Add to cart, etc.)
-Example section rhythm:
+Niche tags only (tags field): return 3 niche-specific tags for "${input.subject}" (≤${TAG_MAX_CHARS} chars each; optional 4th backup OK). The system appends these evergreen tags automatically — do not include them: ${EVERGREEN_TAGS.join(", ")}
+
+Description structure (description field only — NO prices anywhere in description). Keep it easy to read: short opening, then bullets under each heading. No walls of text, no ALL CAPS, minimal emoji.
+1) One short keyword-first opening paragraph (subject + product + gift intent) — first 160 chars matter most; NO emoji
+2) Divider \`____________________\`, then plain section headings
+3) Mockup preview — bullets: mockup before print; request changes; full refund if they dislike the artwork
+4) Front or back artwork — bullets: front OR back (choose at checkout); contact shop for both sides. Do NOT say both sides are included by default
+5) Details — bullets for product, style, colors, sizes
+6) Backgrounds — short bullets (no prices): ${backgroundMarketing}
+7) Personalization — bullets: up to 4 vehicle photos; optional custom text
+8) Materials & care — short bullets
+9) Questions? — one short sentence inviting messages (multiple cars, people/pets, etc.)
+10) Explore the shop — one short sentence + soft CTA
+Example rhythm:
 \`\`\`
-[opening paragraph — no emoji]
+[1–2 sentence opening — no emoji]
 
 ____________________
 
-✨ Mockup preview
-...
+Mockup preview
+• ...
+• ...
 
 ____________________
 
-🎨 Front & back artwork
-...
+Front or back artwork
+• ...
 \`\`\`
 If shop example descriptions show prices, omit those prices — follow structure/voice only.
 
@@ -317,15 +335,6 @@ export async function generateWithOpenAI(
 
   const parsed = JSON.parse(content) as ListingOutput;
 
-  parsed.tags = (parsed.tags || [])
-    .map((t) => t.slice(0, 20).trim())
-    .filter(Boolean)
-    .slice(0, 13);
-
-  while (parsed.tags.length < 13) {
-    parsed.tags.push(`car gift tag ${parsed.tags.length + 1}`.slice(0, 20));
-  }
-
   if (!parsed.referencedListings?.length && referenced.length) {
     parsed.referencedListings = referenced.map((r) => {
       const price =
@@ -360,7 +369,17 @@ export async function generateWithOpenAI(
   parsed.description = stripPricesFromDescription(parsed.description)
     .replace(/—/g, "-");
 
+  // Finalize title first, then mirror its keywords into tags.
   parsed.title = ensureCustomTitlePrefix(parsed.title || "");
+  parsed.tags = ensureTitleKeywordsInTags(
+    parsed.title,
+    parsed.tags || [],
+    13,
+    {
+      subject: input.subject,
+      trending: trendingKeywords,
+    }
+  );
 
   return parsed;
 }

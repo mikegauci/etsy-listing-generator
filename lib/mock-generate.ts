@@ -5,92 +5,32 @@ import {
   TSHIRT_SIZES,
   MEDIA_SLOTS,
   backgroundsByIds,
-  formatBackgroundMarketingCopy,
   formatCustomFieldsNotes,
   MEDIA_ALT_TEXT_MAX,
 } from "./product-options";
 import { ensureCustomTitlePrefix } from "./listing-title";
+import { ensureTitleKeywordsInTags } from "./title-tag-overlap";
 
 function truncate(str: string, max: number): string {
   if (str.length <= max) return str;
   return str.slice(0, max - 1).trimEnd() + "…";
 }
 
-function tag(phrase: string): string {
-  return phrase.replace(/\s+/g, " ").trim().slice(0, 20);
-}
-
-function uniqueTags(candidates: string[]): string[] {
-  const seenWords = new Set<string>();
-  const out: string[] = [];
-
-  for (const raw of candidates) {
-    const t = tag(raw);
-    if (!t || t.length < 2) continue;
-    const words = t.toLowerCase().split(/\s+/);
-    if (words.some((w) => seenWords.has(w))) continue;
-    words.forEach((w) => seenWords.add(w));
-    out.push(t);
-    if (out.length === 13) break;
-  }
-
-  const fillers = [
-    "car culture art",
-    "garage wall decor",
-    "auto enthusiast",
-    "racing inspired",
-    "driver gift idea",
-    "motorsport merch",
-    "custom car print",
-    "tuner lifestyle",
-    "street racing vibe",
-    "classic car fan",
-    "automotive apparel",
-    "car guy present",
-    "jdm style wear",
-    "boost culture tee",
-    "midnight cruise art",
-    "shift knobs vibe",
-    "track day merch",
-    "vintage racer look",
-    "stance nation art",
-    "engine bay print",
-  ];
-  for (const f of fillers) {
-    if (out.length === 13) break;
-    const t = tag(f);
-    const words = t.toLowerCase().split(/\s+/);
-    if (words.some((w) => seenWords.has(w))) continue;
-    words.forEach((w) => seenWords.add(w));
-    out.push(t);
-  }
-
-  let n = 1;
-  while (out.length < 13) {
-    const t = tag(`auto art piece ${n}`);
-    n += 1;
-    const words = t.toLowerCase().split(/\s+/);
-    if (words.some((w) => seenWords.has(w))) continue;
-    words.forEach((w) => seenWords.add(w));
-    out.push(t);
-  }
-
-  return out.slice(0, 13);
-}
-
-function backgroundSection(input: GenerateInput): string {
-  return formatBackgroundMarketingCopy(input.backgroundIds || []);
-}
-
 const SECTION_DIVIDER = "____________________";
 
-const MOCKUP_GUARANTEE = `Every order includes a mockup preview before we submit your design to printing. Review it, request changes, and approve when you love it. Not happy with the artwork? We offer a full refund.`;
-
-const CONTACT_CUSTOM = `Want multiple cars in a single artwork, people or pets in the design, or have another question? Contact us before or after ordering - we're happy to help.`;
-
-const FRONT_BACK_ARTWORK = `Your custom artwork is printed on both the front and back of the garment for a bold, all-around look.`;
-
-const VISIT_SHOP = `Love this design? Browse our Motor Element shop for more custom car shirts, hoodies, and automotive gifts.`;
+function backgroundBullets(input: GenerateInput): string[] {
+  const themes = backgroundsByIds(input.backgroundIds || [])
+    .filter((b) => b.id !== "no-background" && b.id !== "custom-background")
+    .map((b) => b.label);
+  const lines = [
+    "• Choose a theme background, no background, or a custom background",
+    "• Select your option at checkout",
+  ];
+  if (themes.length) {
+    lines.splice(1, 0, `• Themes on this listing: ${themes.join(", ")}`);
+  }
+  return lines;
+}
 
 function buildOptionsNotes(input: GenerateInput): string {
   const parts: string[] = [];
@@ -138,100 +78,95 @@ export function generateMockListing(
     product === "t-shirt"
       ? "T-Shirt"
       : product.charAt(0).toUpperCase() + product.slice(1);
-  const primaryColor = colors.split(",")[0]?.trim() || "Black";
   const subjectForTitle = subject.replace(/^custom\s+/i, "").trim() || subject;
+  // Aim ~10–14 clean words. Never stuff recipients: no "Birthday Gift for Him Dad Boyfriend Men".
+  // Preferred: Custom {niche} {Product}, Personalized Car Photo Shirt, Gift for Him
   const title = ensureCustomTitlePrefix(
-    `${subjectForTitle} ${garment}, ${primaryColor}, Car Guy Gift`
+    `${subjectForTitle} ${garment}, Personalized Car Photo Shirt, Gift for Him`
   );
 
-  const subjectWords = subject.split(/\s+/).filter(Boolean);
+  const subjectWords = subject
+    .replace(/^custom\s+/i, "")
+    .split(/\s+/)
+    .filter(Boolean);
   const shortSubject = subjectWords.slice(0, 2).join(" ") || subject;
+  const headWord = subjectWords[0] || "car";
 
   const marketplaceTagSeeds = marketplace
     .flatMap((m) => m.tags || [])
     .filter(Boolean)
-    .slice(0, 12);
+    .slice(0, 6);
 
-  const tags = uniqueTags([
-    ...trendingKeywords.slice(0, 6),
-    ...marketplaceTagSeeds,
-    `${shortSubject} ${product}`,
-    `${subjectWords[0] || "car"} shirt`,
-    "jdm car gift",
-    "custom car art",
-    "car guy gift",
-    "automotive apparel",
-    `${product} for him`,
-    "garage decor gift",
-    "tuner car merch",
-    "motorsport tee",
-    "custom car print",
-    "race inspired wear",
-    "car culture clothing",
-    `${colors.split(",")[0].trim()} car tee`,
-  ]);
+  const tags = ensureTitleKeywordsInTags(
+    title,
+    [
+      ...trendingKeywords.slice(0, 3),
+      ...marketplaceTagSeeds,
+      `${shortSubject} shirt`,
+      `${headWord} car gift`,
+      `${shortSubject} tee`,
+    ],
+    13,
+    {
+      subject,
+      trending: trendingKeywords,
+    }
+  );
 
   const suggestedPrice = `$${basePrice.toFixed(2)} USD (No background)`;
   const optionsOut = buildOptionsNotes(input);
-  const bgBlock = backgroundSection(input);
 
   const description = [
-    `Looking for the perfect ${subject} ${product}? This custom car illustration is made for car enthusiasts and gift buyers.`,
-    ``,
-    `Personalized ${subject} design - Motor Element style, matching our custom car apparel catalog.`,
+    `Looking for a custom ${subject} ${product}? Personalized car-photo artwork made for enthusiasts and gift buyers.`,
     ``,
     SECTION_DIVIDER,
     ``,
-    `✨ Mockup preview`,
-    MOCKUP_GUARANTEE,
+    `Mockup preview`,
+    `• We send a mockup before anything goes to print`,
+    `• Review it, request changes, and approve when you love it`,
+    `• Not happy with the artwork? Full refund`,
     ``,
     SECTION_DIVIDER,
     ``,
-    `🎨 Front & back artwork`,
-    FRONT_BACK_ARTWORK,
+    `Front or back artwork`,
+    `• Prints on the front or back - choose your side at checkout`,
+    `• Want both sides? Contact us and we can help`,
     ``,
     SECTION_DIVIDER,
     ``,
-    `👕 Details`,
+    `Details`,
     `• Product: ${product}`,
-    `• Style: Custom car illustration (Motor Element catalog)`,
-    `• Color / variants: ${colors}`,
+    `• Style: Custom car illustration from your photo`,
+    `• Colors: ${colors}`,
     product === "t-shirt"
-      ? `• Garment: ${TSHIRT_COLORS.join(" / ")} · sizes ${TSHIRT_SIZES.join(", ")}`
+      ? `• Sizes: ${TSHIRT_SIZES.join(", ")}`
       : null,
     ``,
     SECTION_DIVIDER,
     ``,
-    `🖼️ Backgrounds`,
-    bgBlock || null,
+    `Backgrounds`,
+    ...backgroundBullets(input),
     ``,
-    `✏️ Personalization`,
-    `• Upload car photo/s (optional, up to 4 files)`,
-    `• Add text to your artwork (optional)`,
-    ``,
-    SECTION_DIVIDER,
-    ``,
-    `🧼 Materials & care`,
-    `• Premium blank garment / print surface (see listing variations for exact specs)`,
-    `• Machine wash cold, inside out; tumble dry low`,
-    `• Do not iron directly on the print`,
-    ``,
-    `🎁 Gift-ready for birthdays, garage unveilings, track days, and fellow car obsessives.`,
+    `Personalization`,
+    `• Upload up to 4 vehicle photos (optional)`,
+    `• Add custom text to your artwork (optional)`,
     ``,
     SECTION_DIVIDER,
     ``,
-    `💬 Questions?`,
-    CONTACT_CUSTOM,
+    `Materials & care`,
+    `• Premium blank garment (see variations for specs)`,
+    `• Machine wash cold, inside out`,
+    `• Tumble dry low; do not iron directly on the print`,
     ``,
     SECTION_DIVIDER,
     ``,
-    `🏪 Explore the shop`,
-    VISIT_SHOP,
+    `Questions?`,
+    `Message us anytime - multiple cars, people or pets in the design, or anything else. Happy to help.`,
     ``,
-    `Add to cart and gear up. 🚗`,
-    referenced.length || marketplace.length
-      ? `\n(Context: ${referenced.length} shop comps, ${marketplace.length} marketplace comps used in mock mode.)`
-      : null,
+    `Explore the shop`,
+    `Browse Motor Element for more custom car shirts, hoodies, and automotive gifts.`,
+    ``,
+    `Add to cart when you're ready.`,
   ]
     .filter((line) => line !== null)
     .join("\n");
@@ -273,7 +208,7 @@ export function generateMockListing(
   const mediaAltTexts = MEDIA_SLOTS.map((slot) => ({
     slot,
     altText: truncate(
-      `Custom ${subject} ${garment} by Motor Element - ${slot.toLowerCase()} showing ${subject} automotive artwork in ${primaryColor}, personalized car illustration style for enthusiasts and gift buyers looking for unique custom apparel`,
+      `Custom ${subject} ${garment} by Motor Element - ${slot.toLowerCase()} showing ${subject} automotive artwork, personalized car illustration style for enthusiasts and gift buyers looking for unique custom apparel`,
       MEDIA_ALT_TEXT_MAX
     ),
   }));
