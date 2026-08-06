@@ -78,18 +78,23 @@ export function generateMockListing(
     product === "t-shirt"
       ? "T-Shirt"
       : product.charAt(0).toUpperCase() + product.slice(1);
-  const subjectForTitle = subject.replace(/^custom\s+/i, "").trim() || subject;
-  // Aim ~10–14 clean words. Never stuff recipients: no "Birthday Gift for Him Dad Boyfriend Men".
-  // Preferred: Custom {niche} {Product}, Personalized Car Photo Shirt, Gift for Him
+  // Subject may already be a full listing title (e.g. checklist "Custom JDM T-Shirt").
+  let subjectForTitle = subject.replace(/^custom\s+/i, "").trim() || subject;
+  const alreadyHasProduct =
+    /\s+(t-?shirts?|tees?|hoodies?|sweatshirts?|tank\s*tops?)$/i.test(
+      subjectForTitle
+    );
   const title = ensureCustomTitlePrefix(
-    `${subjectForTitle} ${garment}, Personalized Car Photo Shirt, Gift for Him`
+    alreadyHasProduct
+      ? `${subjectForTitle}, Personalized Car Photo Shirt, Gift for Him`
+      : `${subjectForTitle} ${garment}, Personalized Car Photo Shirt, Gift for Him`
   );
 
-  const subjectWords = subject
-    .replace(/^custom\s+/i, "")
-    .split(/\s+/)
-    .filter(Boolean);
-  const shortSubject = subjectWords.slice(0, 2).join(" ") || subject;
+  const nicheForTags = subjectForTitle
+    .replace(/\s+(t-?shirts?|tees?|hoodies?|sweatshirts?|tank\s*tops?)$/i, "")
+    .trim();
+  const subjectWords = nicheForTags.split(/\s+/).filter(Boolean);
+  const shortSubject = subjectWords.slice(0, 2).join(" ") || nicheForTags || subject;
   const headWord = subjectWords[0] || "car";
 
   const marketplaceTagSeeds = marketplace
@@ -98,7 +103,7 @@ export function generateMockListing(
     .slice(0, 6);
 
   const tags = buildListingTags({
-    subject,
+    subject: nicheForTags || subject,
     title,
     trending: trendingKeywords,
     candidates: [
@@ -113,7 +118,7 @@ export function generateMockListing(
   const optionsOut = buildOptionsNotes(input);
 
   const description = [
-    `Looking for a custom ${subject} ${product}? Personalized car-photo artwork made for enthusiasts and gift buyers.`,
+    `Looking for a custom ${nicheForTags || subject} ${product}? Personalized car-photo artwork made for enthusiasts and gift buyers.`,
     ``,
     SECTION_DIVIDER,
     ``,

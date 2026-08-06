@@ -46,11 +46,7 @@ function CategoryRow({
   onToggleCategory: (id: string) => void;
 }) {
   const listingDone = state.doneCategories.includes(category.id);
-  const subject = category.title
-    .replace(/^Custom\s+/i, "")
-    .replace(/\s+T-Shirt$/i, "")
-    .trim();
-  const generateHref = `/?subject=${encodeURIComponent(subject)}`;
+  const generateHref = `/?subject=${encodeURIComponent(category.title)}`;
 
   return (
     <li
