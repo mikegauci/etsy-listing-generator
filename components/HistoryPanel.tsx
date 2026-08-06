@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { GeneratedListingRow } from "@/lib/types";
 import { CopyField } from "./CopyField";
+import { ErrorBanner } from "./ui";
 import { formatTagsLine } from "@/lib/tags";
 
 export function HistoryPanel() {
@@ -14,7 +15,7 @@ export function HistoryPanel() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/history");
+        const res = await fetch("/api/history", { cache: "no-store" });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Failed to load");
         setListings(json.listings || []);
@@ -36,11 +37,7 @@ export function HistoryPanel() {
         </p>
       </div>
 
-      {error && (
-        <p className="rounded border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">
-          {error}
-        </p>
-      )}
+      {error && <ErrorBanner message={error} />}
 
       {loading ? (
         <p className="text-sm text-zinc-500">Loading…</p>

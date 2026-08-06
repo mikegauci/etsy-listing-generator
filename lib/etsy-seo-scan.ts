@@ -1,12 +1,7 @@
 const GOOGLE_SUGGEST_URL =
   "https://suggestqueries.google.com/complete/search?client=firefox&q=";
 
-const REQUEST_DELAY_MS = 300;
 const MAX_KEYWORDS = 20;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function normalizeKeyword(value: string): string {
   return value.replace(/\s+/g, " ").trim().toLowerCase();
@@ -89,30 +84,32 @@ export async function scanEtsyKeywords(
   const seeds = buildSeedQueries(subject, productType);
   const ranked = new Map<string, { phrase: string; score: number }>();
 
-  for (let i = 0; i < seeds.length; i += 1) {
-    const seed = seeds[i];
-    try {
+  const settled = await Promise.allSettled(
+    seeds.map(async (seed, i) => {
       const suggestions = await fetchGoogleSuggestions(seed);
-      suggestions.forEach((suggestion, index) => {
-        if (!isRelevantSuggestion(suggestion, subject)) return;
+      return { seed, i, suggestions };
+    })
+  );
 
-        const phrase = stripEtsyPrefix(suggestion);
-        if (!phrase) return;
-
-        const key = normalizeKeyword(phrase);
-        const score = (seeds.length - i) * 10 + Math.max(0, 10 - index);
-        const existing = ranked.get(key);
-        if (!existing || score > existing.score) {
-          ranked.set(key, { phrase, score });
-        }
-      });
-    } catch (err) {
-      console.warn("[seo-scan] seed failed:", seed, err);
+  for (const result of settled) {
+    if (result.status !== "fulfilled") {
+      console.warn("[seo-scan] seed failed:", result.reason);
+      continue;
     }
+    const { i, suggestions } = result.value;
+    suggestions.forEach((suggestion, index) => {
+      if (!isRelevantSuggestion(suggestion, subject)) return;
 
-    if (i < seeds.length - 1) {
-      await sleep(REQUEST_DELAY_MS);
-    }
+      const phrase = stripEtsyPrefix(suggestion);
+      if (!phrase) return;
+
+      const key = normalizeKeyword(phrase);
+      const score = (seeds.length - i) * 10 + Math.max(0, 10 - index);
+      const existing = ranked.get(key);
+      if (!existing || score > existing.score) {
+        ranked.set(key, { phrase, score });
+      }
+    });
   }
 
   return Array.from(ranked.values())

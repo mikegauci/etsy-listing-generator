@@ -6,7 +6,13 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    return NextResponse.json(
+      { error: "NEXT_PUBLIC_APP_URL is not configured" },
+      { status: 500 }
+    );
+  }
 
   if (error) {
     return NextResponse.redirect(
@@ -32,9 +38,9 @@ export async function GET(request: NextRequest) {
     response.cookies.set("etsy_oauth_verifier", "", { path: "/", maxAge: 0 });
     return response;
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Token exchange failed";
+    console.error("[etsy/callback]", err);
     return NextResponse.redirect(
-      `${appUrl}/shop-data?etsy=error&message=${encodeURIComponent(message)}`
+      `${appUrl}/shop-data?etsy=error&message=${encodeURIComponent("Token exchange failed")}`
     );
   }
 }

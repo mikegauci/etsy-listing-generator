@@ -138,31 +138,56 @@ function titleWordKey(word: string): string {
   return word.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function productTitleLabel(productType?: string): string {
+  const p = (productType || "t-shirt").trim().toLowerCase();
+  if (p === "t-shirt" || p === "tee") return "Shirt";
+  if (p === "hoodie") return "Hoodie";
+  if (p === "sweatshirt") return "Sweatshirt";
+  if (p === "tank top") return "Tank Top";
+  if (p === "poster") return "Poster";
+  if (p === "canvas print") return "Canvas Print";
+  if (p === "digital download") return "Digital Download";
+  if (p === "mug") return "Mug";
+  if (p === "phone case") return "Phone Case";
+  if (p === "sticker") return "Sticker";
+  if (p === "tote bag") return "Tote Bag";
+  return p
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 /** Natural trait phrases only — never word-by-word recipient dumps. */
-const TITLE_EXTRA_PHRASES = [
-  "Personalized Car Photo Shirt",
-  "Gift for Him",
-] as const;
+function titleExtraPhrases(productType?: string): string[] {
+  const label = productTitleLabel(productType);
+  return [`Personalized Car Photo ${label}`, "Gift for Him"];
+}
 
 /**
  * Expand short titles toward ~10–14 words with clean, natural trait groups.
+ * Preserves existing comma segments from the model; only pads when short.
  * Avoids keyword stuffing like "Birthday Gift for Him Dad Boyfriend Men".
  */
-export function fillTitleWordBudget(title: string, targetWords = 14): string {
+export function fillTitleWordBudget(
+  title: string,
+  targetWords = 14,
+  productType?: string
+): string {
   const cleaned = title.replace(/\s+/g, " ").trim().replace(/,\s*$/, "");
-  const core = (cleaned.split(",")[0] || cleaned).trim();
+  if (!cleaned) return cleaned;
+
   const used = new Set(
-    core
+    cleaned
       .split(/\s+/)
       .filter(Boolean)
       .map((w) => titleWordKey(w))
       .filter(Boolean)
   );
 
-  let result = core;
-  let total = core.split(/\s+/).filter(Boolean).length;
+  let result = cleaned;
+  let total = cleaned.split(/\s+/).filter(Boolean).length;
 
-  for (const phrase of TITLE_EXTRA_PHRASES) {
+  for (const phrase of titleExtraPhrases(productType)) {
     if (total >= targetWords) break;
     const words = phrase.split(/\s+/);
     // Skip phrase if most content words are already present.
@@ -189,8 +214,24 @@ export function fillTitleWordBudget(title: string, targetWords = 14): string {
   return result.replace(/\s+/g, " ").trim().replace(/,\s*$/, "");
 }
 
+function trimTitleChars(title: string, max: number): string {
+  if (title.length <= max) return title;
+  const cut = title.slice(0, max).trimEnd();
+  const lastComma = cut.lastIndexOf(",");
+  const lastSpace = cut.lastIndexOf(" ");
+  const boundary = Math.max(lastComma, lastSpace);
+  if (boundary > max * 0.5) {
+    return cut.slice(0, boundary).trim().replace(/,\s*$/, "");
+  }
+  return cut.replace(/,\s*$/, "");
+}
+
 /** Ensure listing titles start with "Custom" (Motor Element catalog convention). */
-export function ensureCustomTitlePrefix(title: string, max = 140): string {
+export function ensureCustomTitlePrefix(
+  title: string,
+  max = 140,
+  productType?: string
+): string {
   let t = stripTitleFiller(stripGarmentColorsFromTitle(title));
   if (!t) return "Custom";
 
@@ -216,11 +257,10 @@ export function ensureCustomTitlePrefix(title: string, max = 140): string {
     .replace(/^,\s*/, "")
     .replace(/,\s*$/, "");
 
-  t = fillTitleWordBudget(t, 14);
+  t = fillTitleWordBudget(t, 14, productType);
   t = trimTitleWords(t, 14);
 
-  if (t.length <= max) return t;
-  return t.slice(0, max).trimEnd();
+  return trimTitleChars(t, max);
 }
 
 /** e.g. "Birthday Gift for Him Dad Boyfriend Men" — too many recipients jammed. */

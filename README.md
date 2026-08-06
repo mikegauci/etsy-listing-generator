@@ -14,7 +14,7 @@ Generates SEO-ready titles, tags, descriptions, and media alt texts by comparing
 - Next.js 14 (App Router) + TypeScript + Tailwind
 - Supabase Postgres (`shop_listings`, `generated_listings`, `etsy_oauth_tokens`)
 - Etsy Open API v3 (OAuth, listing sync, marketplace search)
-- OpenAI structured outputs (optional; mock mode by default)
+- OpenAI structured outputs (set `USE_MOCK_GENERATION=true` to skip OpenAI)
 
 ## Deploy on Vercel
 
@@ -37,17 +37,17 @@ Redeploy after changing env vars so the new values apply.
 | `APP_PASSWORD` | Yes | Workshop login password |
 | `AUTH_SECRET` | Yes | Long random string for session cookies (do not reuse the password) |
 | `NEXT_PUBLIC_APP_URL` | Yes | Production site URL, no trailing slash |
-| `USE_MOCK_GENERATION` | Yes | `false` for real OpenAI; `true` to skip OpenAI |
+| `USE_MOCK_GENERATION` | No | Only `true` enables mocks; unset/false uses OpenAI |
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon key (RLS blocks public table access; app uses service role server-side) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon key (client/public; server uses service role) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only — never expose to the client |
-| `OPENAI_API_KEY` | If mock off | Required when `USE_MOCK_GENERATION=false` |
+| `OPENAI_API_KEY` | If mock off | Required unless `USE_MOCK_GENERATION=true` |
 | `OPENAI_MODEL` | No | Default `gpt-5.6` |
 | `ETSY_API_KEY` | Yes | Etsy app keystring |
 | `ETSY_SHARED_SECRET` | Yes | Etsy shared secret |
 | `ETSY_SHOP_ID` | Yes | Your numeric shop ID |
 | `ETSY_REDIRECT_URI` | Yes | Must match Etsy app callback exactly |
-| `ETSY_TAXONOMY_ID_TSHIRT` | No | Optional taxonomy override |
+| `ETSY_TAXONOMY_ID_T_SHIRT` | No | Optional per-product taxonomy override (`ETSY_TAXONOMY_ID_<PRODUCT>`) |
 | `ETSY_REFRESH_TOKEN` | No | Bootstrap only; runtime tokens live in Supabase |
 
 Copy from [`.env.example`](.env.example) when configuring.

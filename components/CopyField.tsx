@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   label: string;
@@ -27,12 +27,28 @@ export function CopyField({
   hint,
 }: Props) {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textToCopy = copyValue ?? value;
 
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
   async function copy() {
-    await navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    setCopyError(null);
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopyError("Copy failed");
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopyError(null), 2000);
+    }
   }
 
   const className = `w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-600 ${
@@ -50,7 +66,7 @@ export function CopyField({
           onClick={copy}
           className="shrink-0 rounded border border-zinc-700 px-2 py-0.5 font-mono text-xs text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
         >
-          {copied ? "Copied" : "Copy"}
+          {copyError ? copyError : copied ? "Copied" : "Copy"}
         </button>
       </div>
       {hint && <p className="text-[11px] text-zinc-600">{hint}</p>}

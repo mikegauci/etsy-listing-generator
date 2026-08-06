@@ -8,12 +8,13 @@ import { scanEtsyKeywords } from "@/lib/etsy-seo-scan";
 import { fetchMarketplaceComps, type MarketplaceListing } from "@/lib/etsy";
 import { getTaxonomyId } from "@/lib/product-options";
 import { getSupabaseAdmin, hasSupabaseConfig } from "@/lib/supabase";
+import { apiError } from "@/lib/api";
 import type { ShopListing } from "@/lib/types";
 
+export const maxDuration = 120;
+
 function shouldUseMockGeneration(): boolean {
-  const flag = process.env.USE_MOCK_GENERATION;
-  if (flag === "false") return false;
-  return true;
+  return process.env.USE_MOCK_GENERATION === "true";
 }
 
 export async function POST(request: Request) {
@@ -36,8 +37,7 @@ export async function POST(request: Request) {
     console.log("[generate] productType:", input.productType);
     console.log(
       "[generate] backgrounds:",
-      (input.backgroundIds || []).length,
-      input.backgroundIds
+      (input.backgroundIds || []).length
     );
     console.log(
       "[generate] mode:",
@@ -209,8 +209,7 @@ export async function POST(request: Request) {
       isMock,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Generation failed";
     console.error("[generate] FAILED after", `${Date.now() - started}ms`, err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(500, "Generation failed", err);
   }
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { KeywordStat, ShopListing } from "@/lib/types";
+import { ErrorBanner, SuccessBanner } from "./ui";
 
 type ShopDataResponse = {
   listings: ShopListing[];
@@ -107,16 +108,8 @@ export function ShopDataPanel() {
         </p>
       )}
 
-      {message && (
-        <p className="rounded border border-emerald-900/50 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-300">
-          {message}
-        </p>
-      )}
-      {error && (
-        <p className="rounded border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">
-          {error}
-        </p>
-      )}
+      {message && <SuccessBanner message={message} />}
+      {error && <ErrorBanner message={error} />}
       {data?.warning && (
         <p className="text-sm text-amber-400">{data.warning}</p>
       )}

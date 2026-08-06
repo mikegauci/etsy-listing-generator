@@ -1,10 +1,8 @@
 import { containsGarmentColor, isColorOnlyPhrase, isRecipientKeywordDump } from "./listing-title";
 
-/** Etsy tag hard limits. Never cut mid-word when clamping. */
+/** Etsy tag hard limits. Never cut mid-word when clamping multi-word phrases. */
 export const TAG_MAX_CHARS = 20;
 export const TAG_COUNT = 13;
-export const ETSY_TAG_MAX_CHARS = TAG_MAX_CHARS;
-export const ETSY_TAG_COUNT = TAG_COUNT;
 
 /**
  * Always-on Motor Element tags (custom car photo apparel + gift intent).
@@ -23,26 +21,28 @@ export const EVERGREEN_TAGS = [
   "custom car photo",
 ] as const;
 
-export const EVERGREEN_CORE_TAGS = EVERGREEN_TAGS;
-
 /** Niche-specific tags to reserve (evergreen fills the rest → usually 3). */
 export const NICHE_TAG_TARGET_MIN = 3;
-export const NICHE_TAG_TARGET_MAX = 4;
 
 const EVERGREEN_SET = new Set(EVERGREEN_TAGS.map((t) => t.toLowerCase()));
 
 /**
  * Fit a phrase into Etsy's tag length by dropping whole words from the end.
- * Avoids mid-word truncation and dangling stop words like "birthday gift for".
+ * For a single overlong word, truncate at max (better than discarding the niche).
+ * Avoids dangling stop words like "birthday gift for".
  */
 export function clampEtsyTag(phrase: string, max = TAG_MAX_CHARS): string {
-  let t = phrase.replace(/\s+/g, " ").trim();
-  if (!t) return "";
-  if (t.length <= max) {
-    return stripDanglingTagWords(t);
+  const cleaned = phrase.replace(/\s+/g, " ").trim();
+  if (!cleaned) return "";
+  if (cleaned.length <= max) {
+    return stripDanglingTagWords(cleaned);
   }
 
-  const words = t.split(" ").filter(Boolean);
+  const words = cleaned.split(" ").filter(Boolean);
+  if (words.length === 1) {
+    return words[0].slice(0, max);
+  }
+
   while (words.length > 1) {
     words.pop();
     const next = stripDanglingTagWords(words.join(" "));
@@ -51,7 +51,9 @@ export function clampEtsyTag(phrase: string, max = TAG_MAX_CHARS): string {
     }
   }
 
-  return "";
+  // Last remaining word may still be over max.
+  const last = words[0] || "";
+  return last.length <= max ? last : last.slice(0, max);
 }
 
 const TAG_TRAILING_STOP = new Set([
@@ -78,10 +80,6 @@ export function stripDanglingTagWords(tag: string): string {
     words.pop();
   }
   return words.join(" ");
-}
-
-export function normalizeTag(phrase: string): string {
-  return clampEtsyTag(phrase, TAG_MAX_CHARS);
 }
 
 function normalizeTagKey(value: string): string {
@@ -174,6 +172,7 @@ export function nicheTagCandidates(opts: {
 /**
  * Pack listing tags: 3 niche tags (from title/subject) + evergreen core → 13.
  * Pass `title` so title keywords are mirrored into the niche slots.
+ * Never invents junk filler like "car gift idea N".
  */
 export function buildListingTags(
   nicheTagsOrOpts:
@@ -232,11 +231,10 @@ export function buildListingTags(
     push(t);
   }
 
-  let n = 1;
-  while (out.length < count) {
-    push(`car gift idea ${n}`);
-    n += 1;
-    if (n > 20) break;
+  // If still short (very unusual), repeat truncated subject fragments — never junk.
+  if (out.length < count) {
+    const fallback = clampEtsyTag(`${opts.subject} gift`).toLowerCase();
+    if (fallback) push(fallback);
   }
 
   return out.slice(0, count);
@@ -246,15 +244,20 @@ export function buildListingTags(
 export function formatTagsLine(tags: string[] | null | undefined): string {
   return (tags || [])
     .flatMap((tag) => tag.split(/[\n\r]+/))
-    .flatMap((tag) => tag.split(","))
     .map((tag) => tag.trim())
     .filter(Boolean)
     .join(", ");
 }
 
+/**
+ * Parse a comma-separated tags line into individual tags.
+ * Does not split on commas inside already-normalized tags from formatTagsLine
+ * (those never contain commas after clamp).
+ */
 export function parseTagsLine(line: string): string[] {
   return line
     .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+    .map((tag) => clampEtsyTag(tag.trim()).toLowerCase())
+    .filter((tag) => tag.length >= 2)
+    .slice(0, TAG_COUNT);
 }

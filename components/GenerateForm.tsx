@@ -3,7 +3,8 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CopyField } from "./CopyField";
-import { formatTagsLine, parseTagsLine } from "@/lib/tags";
+import { ErrorBanner, fieldClass } from "./ui";
+import { formatTagsLine, parseTagsLine, TAG_COUNT } from "@/lib/tags";
 import { PRODUCT_TYPES } from "@/lib/types";
 import type { ListingOutput } from "@/lib/types";
 import {
@@ -14,9 +15,6 @@ import {
 } from "@/lib/product-options";
 
 type Result = ListingOutput & { id?: string | null; isMock?: boolean };
-
-const fieldClass =
-  "w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-600";
 
 const PROGRESS_STAGES = [
   { until: 25, label: "Scanning marketplace…" },
@@ -42,6 +40,7 @@ export function GenerateForm() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const fromQuery = searchParams.get("subject");
@@ -51,12 +50,14 @@ export function GenerateForm() {
   useEffect(() => {
     return () => {
       if (progressTimer.current) clearInterval(progressTimer.current);
+      if (finishTimer.current) clearTimeout(finishTimer.current);
     };
   }, []);
 
   function startProgress() {
     setProgress(4);
     if (progressTimer.current) clearInterval(progressTimer.current);
+    if (finishTimer.current) clearTimeout(finishTimer.current);
     progressTimer.current = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 92) return prev;
@@ -72,13 +73,17 @@ export function GenerateForm() {
       progressTimer.current = null;
     }
     setProgress(100);
-    window.setTimeout(() => setProgress(0), 700);
+    finishTimer.current = setTimeout(() => setProgress(0), 700);
   }
 
   function failProgress() {
     if (progressTimer.current) {
       clearInterval(progressTimer.current);
       progressTimer.current = null;
+    }
+    if (finishTimer.current) {
+      clearTimeout(finishTimer.current);
+      finishTimer.current = null;
     }
     setProgress(0);
   }
@@ -183,11 +188,7 @@ export function GenerateForm() {
           </div>
         )}
 
-        {error && (
-          <p className="rounded border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">
-            {error}
-          </p>
-        )}
+        {error && <ErrorBanner message={error} />}
 
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-3">
@@ -252,11 +253,11 @@ export function GenerateForm() {
               onChange={(v) => setResult({ ...result, title: v })}
             />
             <CopyField
-              label="Tags (13)"
+              label={`Tags (${result.tags.length}/${TAG_COUNT})`}
               value={formatTagsLine(result.tags)}
               copyValue={formatTagsLine(result.tags)}
               singleLine
-              hint="One comma-separated line - use Copy to paste into Etsy."
+              hint="Comma-separated · max 13 tags · ≤20 chars each · Copy pastes into Etsy."
               onChange={(v) =>
                 setResult({
                   ...result,

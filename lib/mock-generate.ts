@@ -6,10 +6,12 @@ import {
   MEDIA_SLOTS,
   backgroundsByIds,
   formatCustomFieldsNotes,
+  getDefaultBasePriceUsd,
   MEDIA_ALT_TEXT_MAX,
 } from "./product-options";
 import { ensureCustomTitlePrefix } from "./listing-title";
 import { buildListingTags } from "./tags";
+import { formatReferencedListing } from "./shop-listings";
 
 function truncate(str: string, max: number): string {
   if (str.length <= max) return str;
@@ -72,29 +74,37 @@ export function generateMockListing(
   const bgs = backgroundsByIds(input.backgroundIds || []);
   const noBg = bgs.find((b) => b.id === "no-background");
   const basePrice =
-    input.price != null ? Number(input.price) : noBg?.priceUsd ?? 43;
+    input.price != null
+      ? Number(input.price)
+      : noBg?.priceUsd ?? getDefaultBasePriceUsd();
 
   const garment =
     product === "t-shirt"
       ? "T-Shirt"
       : product.charAt(0).toUpperCase() + product.slice(1);
   // Subject may already be a full listing title (e.g. checklist "Custom JDM T-Shirt").
-  let subjectForTitle = subject.replace(/^custom\s+/i, "").trim() || subject;
+  const subjectForTitle = subject.replace(/^custom\s+/i, "").trim() || subject;
   const alreadyHasProduct =
-    /\s+(t-?shirts?|tees?|hoodies?|sweatshirts?|tank\s*tops?)$/i.test(
+    /\s+(t-?shirts?|tees?|hoodies?|sweatshirts?|tank\s*tops?|mugs?|posters?|stickers?|tote\s*bags?|phone\s*cases?|canvas\s*prints?|digital\s*downloads?)$/i.test(
       subjectForTitle
     );
   const title = ensureCustomTitlePrefix(
     alreadyHasProduct
-      ? `${subjectForTitle}, Personalized Car Photo Shirt, Gift for Him`
-      : `${subjectForTitle} ${garment}, Personalized Car Photo Shirt, Gift for Him`
+      ? subjectForTitle
+      : `${subjectForTitle} ${garment}`,
+    140,
+    product
   );
 
   const nicheForTags = subjectForTitle
-    .replace(/\s+(t-?shirts?|tees?|hoodies?|sweatshirts?|tank\s*tops?)$/i, "")
+    .replace(
+      /\s+(t-?shirts?|tees?|hoodies?|sweatshirts?|tank\s*tops?|mugs?|posters?|stickers?|tote\s*bags?|phone\s*cases?|canvas\s*prints?|digital\s*downloads?)$/i,
+      ""
+    )
     .trim();
   const subjectWords = nicheForTags.split(/\s+/).filter(Boolean);
-  const shortSubject = subjectWords.slice(0, 2).join(" ") || nicheForTags || subject;
+  const shortSubject =
+    subjectWords.slice(0, 2).join(" ") || nicheForTags || subject;
   const headWord = subjectWords[0] || "car";
 
   const marketplaceTagSeeds = marketplace
@@ -177,14 +187,7 @@ export function generateMockListing(
     MEDIA_ALT_TEXT_MAX
   );
 
-  const referencedListings = referenced.map(
-    (r) =>
-      `${r.etsy_listing_id}: ${r.title}${
-        r.price_amount != null
-          ? ` (${r.price_amount} ${r.price_currency || "USD"})`
-          : ""
-      }`
-  );
+  const referencedListings = referenced.map(formatReferencedListing);
 
   const seoNotes = [
     `Mock generation (USE_MOCK_GENERATION=true).`,

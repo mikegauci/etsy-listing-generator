@@ -2,13 +2,8 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 let adminClient: SupabaseClient | null = null;
 
-function getServerKey(): string | undefined {
-  return (
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    undefined
-  );
+function getServiceRoleKey(): string | undefined {
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || undefined;
 }
 
 export function getSupabaseAdmin(): SupabaseClient {
@@ -16,11 +11,11 @@ export function getSupabaseAdmin(): SupabaseClient {
 
   const url =
     process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = getServerKey();
+  const key = getServiceRoleKey();
 
   if (!url || !key) {
     throw new Error(
-      "Missing Supabase URL or API key (set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY)"
+      "Missing Supabase URL or SUPABASE_SERVICE_ROLE_KEY (anon keys are not allowed server-side)"
     );
   }
 
@@ -39,5 +34,5 @@ export function getSupabaseAdmin(): SupabaseClient {
 export function hasSupabaseConfig(): boolean {
   const url =
     process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  return Boolean(url && getServerKey());
+  return Boolean(url && getServiceRoleKey());
 }

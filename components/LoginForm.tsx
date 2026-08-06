@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ErrorBanner, fieldClass } from "./ui";
 
 export function LoginForm() {
   const router = useRouter();
@@ -25,7 +26,10 @@ export function LoginForm() {
         throw new Error(data.error || "Login failed");
       }
       const next = searchParams.get("next") || "/";
-      router.push(next);
+      // Only allow relative in-app redirects
+      const safeNext =
+        next.startsWith("/") && !next.startsWith("//") ? next : "/";
+      router.push(safeNext);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -52,9 +56,9 @@ export function LoginForm() {
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="w-full rounded border border-zinc-800 bg-zinc-950 px-3 py-2 font-mono text-sm text-zinc-100 outline-none focus:border-zinc-600"
+        className={`${fieldClass} font-mono`}
       />
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <ErrorBanner message={error} />}
       <button
         type="submit"
         disabled={loading}

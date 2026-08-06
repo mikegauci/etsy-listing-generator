@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, hasSupabaseConfig } from "@/lib/supabase";
 import { computeKeywordStats } from "@/lib/keywords";
+import { SHOP_LISTING_COLUMNS } from "@/lib/shop-listings";
+import { apiError } from "@/lib/api";
 import type { ShopListing } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +23,7 @@ export async function GET() {
     const [{ data: listings, error }, { data: token }] = await Promise.all([
       supabase
         .from("shop_listings")
-        .select(
-          "id, etsy_listing_id, title, tags, description, views, num_favorers, taxonomy_path, category, price_amount, price_currency, state, url, synced_at"
-        )
+        .select(SHOP_LISTING_COLUMNS)
         .eq("state", "active")
         .order("views", { ascending: false })
         .limit(200),
@@ -35,7 +35,7 @@ export async function GET() {
     ]);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return apiError(500, "Failed to load shop data", error);
     }
 
     const rows = (listings || []) as ShopListing[];
@@ -48,7 +48,6 @@ export async function GET() {
       tokenUpdatedAt: token?.updated_at ?? null,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to load shop data";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(500, "Failed to load shop data", err);
   }
 }

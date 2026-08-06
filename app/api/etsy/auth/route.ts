@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { buildAuthUrl, createPkcePair } from "@/lib/etsy";
+import { apiError } from "@/lib/api";
 
 export async function GET() {
   try {
@@ -25,7 +26,6 @@ export async function GET() {
     });
     return response;
   } catch (err) {
-    const message = err instanceof Error ? err.message : "OAuth init failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(500, "OAuth init failed", err);
   }
 }

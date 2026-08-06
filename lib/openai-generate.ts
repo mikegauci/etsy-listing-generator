@@ -1,5 +1,11 @@
 import OpenAI from "openai";
-import type { GenerateInput, ListingOutput, ShopListing } from "./types";
+import {
+  listingOutputSchema,
+  openaiListingSchema,
+  type GenerateInput,
+  type ListingOutput,
+  type ShopListing,
+} from "./types";
 import type { MarketplaceListing } from "./etsy";
 import {
   TSHIRT_COLORS,
@@ -8,11 +14,16 @@ import {
   backgroundsByIds,
   formatBackgroundMarketingCopy,
   formatCustomFieldsNotes,
+  getDefaultBasePriceUsd,
   MEDIA_ALT_TEXT_MAX,
   MEDIA_ALT_TEXT_MIN,
 } from "./product-options";
 import { ensureCustomTitlePrefix } from "./listing-title";
 import { buildListingTags, EVERGREEN_TAGS, TAG_MAX_CHARS } from "./tags";
+import {
+  formatReferencedListing,
+  resolveMediaContext,
+} from "./shop-listings";
 
 const LISTING_JSON_SCHEMA = {
   name: "etsy_listing",
@@ -66,6 +77,11 @@ const LISTING_JSON_SCHEMA = {
   },
 } as const;
 
+function truncateAlt(str: string, max = MEDIA_ALT_TEXT_MAX): string {
+  if (str.length <= max) return str;
+  return str.slice(0, max - 1).trimEnd() + "…";
+}
+
 function avgCompPrice(referenced: ShopListing[]): string | null {
   const priced = referenced.filter((r) => r.price_amount != null);
   if (!priced.length) return null;
@@ -116,7 +132,7 @@ function buildSystemPrompt(): string {
   • Clearly state what you’re selling (t-shirt, hoodie, mug, etc.) — not vague “art” alone.
   • Put the most important traits upfront in the first ~40 chars after Custom: niche subject + product type.
   • Prefer close to 14 words (Etsy title tip) — aim for 10–14 natural words. Hard max 140 characters.
-  • Preferred title pattern: Custom {niche} {Product}, Personalized Car Photo Shirt, Gift for Him.
+  • Preferred title pattern: Custom {niche} {Product}, Personalized Car Photo {Product}, Gift for Him — match the product type (do not say Shirt for mugs/posters).
   • NEVER keyword-stuff recipients or occasions into one blob (forbidden: "Birthday Gift for Him Dad Boyfriend Men", "Gift for Him Dad Boyfriend"). One clean gift phrase is enough — evergreen tags already cover dad/boyfriend.
   • If the niche is long, keep Custom + niche + product first and drop the trailing gift phrase so you stay ≤14.
   • NEVER include garment colors in the title or tags (no Black, White, color names, or color lists). Colors belong only in the description variants section.
@@ -131,7 +147,7 @@ function buildSystemPrompt(): string {
 - If niche-specific shop examples exist (e.g. Ford), blend those with marketplace phrasing. If none, use marketplace title/tag patterns + top Custom Car product-type shop listings as the structural template.
 - Avoid restricted/trademarked claims; do not invent licensed OEM branding.
 - description field: NEVER include prices, dollar amounts, or "+$X" fees — mention backgrounds and options by name only.
-- description field: NEVER use em dashes (—). Use commas, periods, or regular hyphens (-) instead.
+- description field: NEVER use em dashes. Use commas, periods, or regular hyphens (-) instead.
 - suggestedPrice / optionsNotes: may include prices for internal/seller reference; optionsNotes is separate from description.
 - Media filenames are context only`;
 }
@@ -172,16 +188,13 @@ function buildUserPrompt(
           })
           .join("\n\n");
 
-  const media =
-    input.mediaFiles?.length
-      ? input.mediaFiles.map((m) => `${m.kind}: ${m.name}`).join("; ")
-      : input.imageName
-        ? `image: ${input.imageName}`
-        : "none";
+  const media = resolveMediaContext(input);
 
   const avg = avgCompPrice(referenced);
   const bgs = backgroundsByIds(input.backgroundIds || []);
-  const backgroundMarketing = formatBackgroundMarketingCopy(input.backgroundIds || []);
+  const backgroundMarketing = formatBackgroundMarketingCopy(
+    input.backgroundIds || []
+  );
   const bgLinesForOptionsNotes = bgs
     .map((b) => `- ${b.label}: $${b.priceUsd.toFixed(2)}`)
     .join("\n");
@@ -207,12 +220,15 @@ function buildUserPrompt(
 ${trendingKeywords.join(", ")}`
       : "Trending Etsy search terms: none available for this run — rely on shop examples, marketplace comps, and subject keywords.";
 
+  const basePrice =
+    input.price != null ? input.price : getDefaultBasePriceUsd();
+
   return `Write a listing that belongs in this shop's catalog for this niche subject. Compare marketplace comps vs your shop examples to choose the strongest title and tags.
 
 Subject / niche keywords (MUST appear in title + first ~160 chars of description): ${input.subject}
 Product type: ${input.productType}
 Color/variants text (description / options only — NEVER put colors in title or tags): ${input.colors || "Black, White"}
-Base / No-background price (USD): ${input.price != null ? input.price : 43}
+Base / No-background price (USD): ${basePrice}
 Extra seller notes: ${input.optionsNotes || "none"}
 Reference media (context only): ${media}
 Avg matched shop-comp price: ${avg || "n/a"}
@@ -223,7 +239,7 @@ Marketplace title patterns (borrow phrasing patterns that fit Motor Element — 
 ${marketplaceTitles || "(none)"}
 
 Title templates from YOUR shop (adapt for "${input.subject}" — first word MUST be Custom; aim for 10–14 clean words, max 140 chars; NEVER stuff Birthday/Dad/Boyfriend/Men into one phrase; NEVER include colors, front/back print language, apparel, illustration, vehicle, owners, or guy; follow Etsy title rules above):
-${titleTemplates || "(none — e.g. Custom Ford Mustang T-Shirt, Personalized Car Photo Shirt, Gift for Him)"}
+${titleTemplates || `(none — e.g. Custom Ford Mustang T-Shirt, Personalized Car Photo Shirt, Gift for Him)`}
 
 Niche tags only (tags field): return 3 niche-specific tags for "${input.subject}" (≤${TAG_MAX_CHARS} chars each; optional 4th backup OK). The system appends these evergreen tags automatically — do not include them: ${EVERGREEN_TAGS.join(", ")}
 
@@ -295,7 +311,7 @@ export async function generateWithOpenAI(
   console.log("[openai] marketplace comps:", marketplace.length);
   console.log("[openai] trending keywords:", trendingKeywords.length);
   console.log("[openai] requesting completion…");
-  const client = new OpenAI({ apiKey });
+  const client = new OpenAI({ apiKey, timeout: 90_000 });
   const t0 = Date.now();
 
   const completion = await client.chat.completions.create({
@@ -332,20 +348,30 @@ export async function generateWithOpenAI(
   }
   console.log("[openai] content length:", content.length);
 
-  const parsed = JSON.parse(content) as ListingOutput;
+  let rawJson: unknown;
+  try {
+    rawJson = JSON.parse(content);
+  } catch (err) {
+    throw new Error(
+      `OpenAI returned invalid JSON: ${err instanceof Error ? err.message : "parse error"}`
+    );
+  }
+
+  const rawParsed = openaiListingSchema.safeParse(rawJson);
+  if (!rawParsed.success) {
+    console.error("[openai] schema mismatch", rawParsed.error.flatten());
+    throw new Error("OpenAI response failed schema validation");
+  }
+
+  const parsed = rawParsed.data;
 
   if (!parsed.referencedListings?.length && referenced.length) {
-    parsed.referencedListings = referenced.map((r) => {
-      const price =
-        r.price_amount != null
-          ? ` (${r.price_amount} ${r.price_currency || "USD"})`
-          : "";
-      return `${r.etsy_listing_id}: ${r.title}${price}`;
-    });
+    parsed.referencedListings = referenced.map(formatReferencedListing);
   }
 
   if (!parsed.suggestedPrice) {
-    const base = input.price != null ? Number(input.price) : 43;
+    const base =
+      input.price != null ? Number(input.price) : getDefaultBasePriceUsd();
     parsed.suggestedPrice = `$${base.toFixed(2)} USD`;
   }
 
@@ -357,27 +383,50 @@ export async function generateWithOpenAI(
 
   // Always force correct slot labels by position (model sometimes returns "1","2",…)
   const rawAlts = parsed.mediaAltTexts || [];
-  parsed.mediaAltTexts = MEDIA_SLOTS.map((slot, i) => ({
+  const mediaAltTexts = MEDIA_SLOTS.map((slot, i) => ({
     slot,
-    altText: (rawAlts[i]?.altText || `${input.subject} ${slot.toLowerCase()}`).slice(
-      0,
-      MEDIA_ALT_TEXT_MAX
+    altText: truncateAlt(
+      rawAlts[i]?.altText || `${input.subject} ${slot.toLowerCase()}`
     ),
   }));
 
-  parsed.description = stripPricesFromDescription(parsed.description)
-    .replace(/—/g, "-");
+  const description = stripPricesFromDescription(parsed.description).replace(
+    /—/g,
+    "-"
+  );
 
   // Finalize title, then pack niche + evergreen tags.
-  parsed.title = ensureCustomTitlePrefix(parsed.title || "");
-  parsed.tags = buildListingTags({
+  const title = ensureCustomTitlePrefix(
+    parsed.title || "",
+    140,
+    input.productType
+  );
+  const tags = buildListingTags({
     subject: input.subject,
-    title: parsed.title,
+    title,
     trending: trendingKeywords,
     candidates: parsed.tags || [],
   });
 
-  return parsed;
+  const output: ListingOutput = {
+    title,
+    tags,
+    description,
+    altText: truncateAlt(parsed.altText || title),
+    mediaAltTexts,
+    seoNotes: parsed.seoNotes || "",
+    referencedListings: parsed.referencedListings || [],
+    suggestedPrice: parsed.suggestedPrice,
+    optionsNotes: parsed.optionsNotes,
+  };
+
+  const final = listingOutputSchema.safeParse(output);
+  if (!final.success) {
+    console.error("[openai] final output invalid", final.error.flatten());
+    throw new Error("Generated listing failed validation");
+  }
+
+  return final.data;
 }
 
 /** Remove dollar amounts from customer-facing description copy. */

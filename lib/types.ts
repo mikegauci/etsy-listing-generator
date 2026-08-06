@@ -3,6 +3,7 @@ import {
   ALWAYS_SELECTED_BACKGROUND_IDS,
   BACKGROUND_OPTIONS,
   MAX_BACKGROUNDS,
+  MEDIA_SLOTS,
 } from "./product-options";
 
 export const PRODUCT_TYPES = [
@@ -17,28 +18,6 @@ export const PRODUCT_TYPES = [
   "phone case",
   "sticker",
   "tote bag",
-] as const;
-
-export const STYLE_OPTIONS = [
-  "Custom car illustration",
-  "Flat vector",
-  "Cartoon / stylized",
-  "Line art",
-  "Retro / vintage",
-  "Minimalist silhouette",
-  "Photo-based custom",
-  "Other",
-] as const;
-
-export const AUDIENCE_OPTIONS = [
-  "Car guy gift",
-  "Birthday gift",
-  "Gift for him / boyfriend / father",
-  "JDM fan",
-  "F1 fan",
-  "Garage / wall decor",
-  "Custom for my car",
-  "Other",
 ] as const;
 
 export const mediaFileSchema = z.object({
@@ -113,9 +92,25 @@ export const mediaAltTextSchema = z.object({
 
 export type MediaAltText = z.infer<typeof mediaAltTextSchema>;
 
-export const listingOutputSchema = z.object({
+/** Raw model response before tag packing / title finalize. */
+export const openaiListingSchema = z.object({
   title: z.string(),
-  tags: z.array(z.string()).length(13),
+  tags: z.array(z.string()).min(1).max(4),
+  description: z.string(),
+  altText: z.string(),
+  mediaAltTexts: z.array(mediaAltTextSchema).min(1).max(MEDIA_SLOTS.length),
+  seoNotes: z.string(),
+  referencedListings: z.array(z.string()),
+  suggestedPrice: z.string(),
+  optionsNotes: z.string(),
+});
+
+export type OpenAIListingRaw = z.infer<typeof openaiListingSchema>;
+
+/** Final listing output after post-processing. */
+export const listingOutputSchema = z.object({
+  title: z.string().min(1),
+  tags: z.array(z.string()).min(1).max(13),
   description: z.string(),
   altText: z.string(),
   mediaAltTexts: z.array(mediaAltTextSchema),

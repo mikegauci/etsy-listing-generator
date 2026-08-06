@@ -103,9 +103,16 @@ export function getTaxonomyId(productType: string): number {
   const envKey = `ETSY_TAXONOMY_ID_${productType
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "_")}`;
-  const fromEnv = process.env[envKey] || process.env.ETSY_TAXONOMY_ID_TSHIRT;
+  const fromEnv = process.env[envKey];
   if (fromEnv && Number(fromEnv) > 0) return Number(fromEnv);
   return DEFAULT_TAXONOMY_IDS[productType] || DEFAULT_TAXONOMY_IDS["t-shirt"];
+}
+
+/** Catalog base price for "No background" — single source of truth. */
+export function getDefaultBasePriceUsd(): number {
+  return (
+    BACKGROUND_OPTIONS.find((b) => b.id === "no-background")?.priceUsd ?? 43
+  );
 }
 
 export function backgroundsByIds(ids: string[]): BackgroundOption[] {
@@ -135,10 +142,6 @@ export function formatBackgroundMarketingCopy(backgroundIds: string[]): string {
   );
 }
 
-export function defaultBackgroundIds(): string[] {
-  return [...ALWAYS_SELECTED_BACKGROUND_IDS];
-}
-
 export function formatCustomFieldsNotes(): string {
   return CUSTOM_FIELDS.map((f) => {
     if (f.type === "file") {
@@ -147,16 +150,6 @@ export function formatCustomFieldsNotes(): string {
     const extra = f.extraUsd != null ? ` (+$${f.extraUsd.toFixed(2)})` : "";
     return `${f.name}: optional text box${extra}`;
   }).join("\n");
-}
-
-export function tshirtColorSizeValues(): string[] {
-  const out: string[] = [];
-  for (const color of TSHIRT_COLORS) {
-    for (const size of TSHIRT_SIZES) {
-      out.push(`${color} / ${size}`);
-    }
-  }
-  return out;
 }
 
 export const MEDIA_SLOTS = [

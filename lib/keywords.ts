@@ -1,4 +1,7 @@
 import type { KeywordStat, ShopListing } from "./types";
+import { SHOP_LISTING_COLUMNS } from "./shop-listings";
+import { scoreAgainstSubject, tokenizeSubject } from "./scoring";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function tokenizeTitle(title: string): string[] {
   const words = title
@@ -85,18 +88,12 @@ export function computeKeywordStats(listings: ShopListing[]): {
 }
 
 export async function findRelevantListings(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any,
+  supabase: SupabaseClient,
   subject: string,
   productType: string,
   limit = 12
 ): Promise<ShopListing[]> {
-  const subjectTokens = subject
-    .toLowerCase()
-    .split(/\s+/)
-    .map((t) => t.replace(/[^a-z0-9]/g, ""))
-    .filter((t) => t.length > 1)
-    .slice(0, 6);
+  const subjectTokens = tokenizeSubject(subject);
   const productTokens = productType
     .toLowerCase()
     .split(/\s+/)
@@ -104,9 +101,7 @@ export async function findRelevantListings(
 
   const { data, error } = await supabase
     .from("shop_listings")
-    .select(
-      "id, etsy_listing_id, title, tags, description, views, num_favorers, taxonomy_path, category, price_amount, price_currency, state, url, synced_at"
-    )
+    .select(SHOP_LISTING_COLUMNS)
     .eq("state", "active")
     .order("views", { ascending: false })
     .limit(120);
@@ -120,24 +115,11 @@ export async function findRelevantListings(
 
   const scored = rows
     .map((row) => {
-      const hay =
-        `${row.title} ${(row.tags || []).join(" ")} ${row.description || ""} ${row.category || ""}`.toLowerCase();
-      let score = (row.views || 0) * 0.01 + (row.num_favorers || 0) * 0.05;
-
-      // Niche subject match (e.g. Ford, Mustang) — highest weight
-      for (const t of subjectTokens) {
-        if (hay.includes(t)) score += 2000;
-        if ((row.title || "").toLowerCase().includes(t)) score += 1500;
-      }
-
-      for (const t of productTokens) {
-        if (hay.includes(t)) score += 400;
-      }
-
-      // Prefer active catalog performers as style templates even without niche hit
-      if (row.state === "active") score += 50;
-
-      return { row, score, nicheHit: subjectTokens.some((t) => hay.includes(t)) };
+      const { score, nicheHit } = scoreAgainstSubject(row, subjectTokens, {
+        productTokens,
+      });
+      const boosted = score + (row.state === "active" ? 50 : 0);
+      return { row, score: boosted, nicheHit };
     })
     .sort((a, b) => b.score - a.score);
 
@@ -146,7 +128,6 @@ export async function findRelevantListings(
     return niche.map((s) => s.row);
   }
 
-  // Mix niche hits with top product-type / overall performers as title templates
   const rest = scored
     .filter((s) => !s.nicheHit)
     .slice(0, limit - niche.length);

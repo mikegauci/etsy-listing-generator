@@ -1,11 +1,15 @@
 import { createHash, randomBytes } from "crypto";
 import { getSupabaseAdmin, hasSupabaseConfig } from "./supabase";
+import { scoreAgainstSubject, tokenizeSubject } from "./scoring";
 
 const ETSY_API_BASE = "https://api.etsy.com/v3";
 const ETSY_TOKEN_URL = "https://api.etsy.com/v3/public/oauth/token";
 const ETSY_AUTH_URL = "https://www.etsy.com/oauth/connect";
 
 export { ETSY_API_BASE };
+
+/** Serialize token refreshes so concurrent callers don't rotate the same refresh token twice. */
+let refreshInFlight: Promise<string> | null = null;
 
 export async function etsyFetch(
   path: string,
@@ -22,11 +26,18 @@ export async function etsyFetch(
   return fetch(`${ETSY_API_BASE}${path}`, { ...init, headers });
 }
 
+/**
+ * Etsy Open API expects `keystring:shared_secret` in x-api-key for this app type.
+ * (Keystring alone returns 403: "Shared secret is required in x-api-key header.")
+ */
 export function getEtsyApiKeyHeader(): string {
   const key = process.env.ETSY_API_KEY;
   const secret = process.env.ETSY_SHARED_SECRET;
-  if (!key || !secret || key === "your_keystring") {
-    throw new Error("ETSY_API_KEY and ETSY_SHARED_SECRET must be set");
+  if (!key || key === "your_keystring") {
+    throw new Error("ETSY_API_KEY must be set");
+  }
+  if (!secret || secret === "your_shared_secret") {
+    throw new Error("ETSY_SHARED_SECRET must be set");
   }
   return `${key}:${secret}`;
 }
@@ -40,10 +51,13 @@ export function getEtsyClientId(): string {
 }
 
 export function getRedirectUri(): string {
-  return (
-    process.env.ETSY_REDIRECT_URI ||
-    `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/etsy/callback`
-  );
+  const explicit = process.env.ETSY_REDIRECT_URI;
+  if (explicit) return explicit;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    throw new Error("ETSY_REDIRECT_URI or NEXT_PUBLIC_APP_URL must be set");
+  }
+  return `${appUrl.replace(/\/$/, "")}/api/etsy/callback`;
 }
 
 export function createPkcePair(): { verifier: string; challenge: string } {
@@ -147,6 +161,12 @@ export async function saveTokens(tokens: TokenResponse): Promise<void> {
   if (error) throw new Error(`Failed to save Etsy tokens: ${error.message}`);
 }
 
+async function refreshAndPersist(refreshToken: string): Promise<string> {
+  const tokens = await refreshAccessToken(refreshToken);
+  await saveTokens(tokens);
+  return tokens.access_token;
+}
+
 export async function getValidAccessToken(): Promise<string> {
   if (!hasSupabaseConfig()) {
     throw new Error("Supabase is not configured");
@@ -183,9 +203,12 @@ export async function getValidAccessToken(): Promise<string> {
     return accessToken;
   }
 
-  const tokens = await refreshAccessToken(refreshToken);
-  await saveTokens(tokens);
-  return tokens.access_token;
+  if (!refreshInFlight) {
+    refreshInFlight = refreshAndPersist(refreshToken).finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
 }
 
 export type EtsyListing = {
@@ -224,6 +247,20 @@ export type SearchActiveListingsParams = {
   sortOn?: "score" | "created" | "price" | "updated";
 };
 
+export function etsyListingPrice(listing: EtsyListing): {
+  amount: number | null;
+  currency: string | null;
+} {
+  const amount =
+    listing.price && listing.price.divisor
+      ? listing.price.amount / listing.price.divisor
+      : null;
+  return {
+    amount,
+    currency: listing.price?.currency_code || null,
+  };
+}
+
 /** Public marketplace search (API key only — no OAuth). */
 export async function searchActiveListings(
   params: SearchActiveListingsParams
@@ -253,7 +290,7 @@ export async function searchActiveListings(
   if (!res.ok) {
     const text = await res.text();
     throw new Error(
-      `Etsy marketplace search failed: ${res.status} ${text.slice(0, 400)}`
+      `Etsy marketplace search failed: ${res.status} ${text.slice(0, 200)}`
     );
   }
 
@@ -267,10 +304,7 @@ export async function searchActiveListings(
 export function mapEtsyListingToMarketplace(
   listing: EtsyListing
 ): MarketplaceListing {
-  const amount =
-    listing.price && listing.price.divisor
-      ? listing.price.amount / listing.price.divisor
-      : null;
+  const { amount, currency } = etsyListingPrice(listing);
 
   return {
     listing_id: listing.listing_id,
@@ -281,7 +315,7 @@ export function mapEtsyListingToMarketplace(
     views: listing.views ?? 0,
     num_favorers: listing.num_favorers ?? 0,
     price_amount: amount,
-    price_currency: listing.price?.currency_code || null,
+    price_currency: currency,
     url: listing.url || null,
     taxonomy_path: listing.taxonomy_path?.join(" > ") || null,
   };
@@ -293,27 +327,13 @@ export function rankMarketplaceListings(
   limit = 8,
   subject = ""
 ): MarketplaceListing[] {
-  const subjectTokens = subject
-    .toLowerCase()
-    .split(/\s+/)
-    .map((t) => t.replace(/[^a-z0-9]/g, ""))
-    .filter((t) => t.length > 1)
-    .slice(0, 6);
+  const subjectTokens = tokenizeSubject(subject);
 
   return [...listings]
     .map((listing) => {
-      const hay =
-        `${listing.title} ${(listing.tags || []).join(" ")} ${listing.description || ""}`.toLowerCase();
-      let score =
-        (listing.views || 0) * 0.01 + (listing.num_favorers || 0) * 0.05;
-      for (const t of subjectTokens) {
-        if (hay.includes(t)) score += 2000;
-        if (listing.title.toLowerCase().includes(t)) score += 1500;
-      }
-      // Prefer physical apparel-ish comps over pure digital PNG dumps when possible
-      if (/\b(png|svg|digital download|sublimation)\b/i.test(listing.title)) {
-        score -= 500;
-      }
+      const { score } = scoreAgainstSubject(listing, subjectTokens, {
+        digitalPenalty: true,
+      });
       return { listing, score };
     })
     .sort((a, b) => b.score - a.score)
@@ -381,8 +401,9 @@ async function fetchListingsByState(
   const results: EtsyListing[] = [];
   let offset = 0;
   const limit = 100;
+  const maxPages = 50;
 
-  while (true) {
+  for (let page = 0; page < maxPages; page++) {
     const url = new URL(
       `${ETSY_API_BASE}/application/shops/${shopId}/listings`
     );
@@ -397,12 +418,13 @@ async function fetchListingsByState(
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
       },
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (!res.ok) {
       const text = await res.text();
       throw new Error(
-        `Etsy listings fetch failed (${state}): ${res.status} ${text}`
+        `Etsy listings fetch failed (${state}): ${res.status} ${text.slice(0, 200)}`
       );
     }
 
@@ -428,10 +450,7 @@ export async function fetchAllShopListings(): Promise<EtsyListing[]> {
 }
 
 export function mapEtsyListingToRow(listing: EtsyListing) {
-  const amount =
-    listing.price && listing.price.divisor
-      ? listing.price.amount / listing.price.divisor
-      : null;
+  const { amount, currency } = etsyListingPrice(listing);
 
   return {
     etsy_listing_id: listing.listing_id,
@@ -443,7 +462,7 @@ export function mapEtsyListingToRow(listing: EtsyListing) {
     taxonomy_path: listing.taxonomy_path?.join(" > ") || null,
     category: listing.taxonomy_path?.[listing.taxonomy_path.length - 1] || null,
     price_amount: amount,
-    price_currency: listing.price?.currency_code || null,
+    price_currency: currency,
     state: listing.state || "active",
     url: listing.url || null,
     raw: listing,

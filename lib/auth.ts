@@ -2,7 +2,13 @@ const COOKIE_NAME = "me_studio_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 14; // 14 days
 
 function getSecret(): string {
-  return process.env.AUTH_SECRET || process.env.APP_PASSWORD || "dev-secret";
+  const secret = process.env.AUTH_SECRET?.trim();
+  if (!secret) {
+    throw new Error(
+      "AUTH_SECRET must be set to a long random string (do not reuse APP_PASSWORD)"
+    );
+  }
+  return secret;
 }
 
 function toHex(buffer: ArrayBuffer): string {
@@ -30,11 +36,14 @@ async function hmacHex(value: string): Promise<string> {
   return toHex(sig);
 }
 
+/** Constant-time compare that does not early-return on length (pads to max). */
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < a.length; i++) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  const len = Math.max(a.length, b.length);
+  let mismatch = a.length ^ b.length;
+  for (let i = 0; i < len; i++) {
+    const ac = i < a.length ? a.charCodeAt(i) : 0;
+    const bc = i < b.length ? b.charCodeAt(i) : 0;
+    mismatch |= ac ^ bc;
   }
   return mismatch === 0;
 }
@@ -54,7 +63,12 @@ export async function verifySessionToken(
   const [payload, signature] = parts;
   if (!payload.startsWith("ok:")) return false;
 
-  const expected = await hmacHex(payload);
+  let expected: string;
+  try {
+    expected = await hmacHex(payload);
+  } catch {
+    return false;
+  }
   if (!timingSafeEqual(signature, expected)) return false;
 
   const segments = payload.split(":");

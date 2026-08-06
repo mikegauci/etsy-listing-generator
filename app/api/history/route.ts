@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, hasSupabaseConfig } from "@/lib/supabase";
+import { apiError } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     if (!hasSupabaseConfig()) {
-      return NextResponse.json({ listings: [], warning: "Supabase is not configured" });
+      return NextResponse.json({
+        listings: [],
+        warning: "Supabase is not configured",
+      });
     }
 
     const supabase = getSupabaseAdmin();
@@ -17,12 +21,11 @@ export async function GET() {
       .limit(100);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return apiError(500, "Failed to load history", error);
     }
 
     return NextResponse.json({ listings: data || [] });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to load history";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return apiError(500, "Failed to load history", err);
   }
 }

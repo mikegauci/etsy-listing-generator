@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ALL_CHECKLIST_CATEGORIES,
@@ -11,6 +11,7 @@ import {
   type ChecklistCategory,
   type ChecklistState,
 } from "@/lib/title-checklist";
+import { ErrorBanner } from "./ui";
 
 type Filter = "all" | "todo" | "done";
 
@@ -169,6 +170,12 @@ export function TitleChecklist() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+  const stateRef = useRef(state);
+  const saveChain = useRef(Promise.resolve());
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -201,37 +208,67 @@ export function TitleChecklist() {
     [state.doneCategories]
   );
 
-  async function toggleCategory(id: string) {
-    const previous = state;
-    const has = state.doneCategories.includes(id);
+  function toggleCategory(id: string) {
+    const snapshotBefore = stateRef.current;
+    const has = snapshotBefore.doneCategories.includes(id);
     const next: ChecklistState = {
       doneCategories: has
-        ? state.doneCategories.filter((x) => x !== id)
-        : [...state.doneCategories, id],
+        ? snapshotBefore.doneCategories.filter((x) => x !== id)
+        : [...snapshotBefore.doneCategories, id],
     };
 
     setState(next);
+    stateRef.current = next;
     setSaving(true);
     setError(null);
-    try {
-      const res = await fetch("/api/titles-checklist", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ doneCategories: next.doneCategories }),
+
+    // Serialize saves so rapid toggles don't last-write-wins against each other.
+    saveChain.current = saveChain.current
+      .then(async () => {
+        const payload = stateRef.current;
+        const res = await fetch("/api/titles-checklist", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ doneCategories: payload.doneCategories }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to save");
+        const confirmed: ChecklistState = {
+          doneCategories: Array.isArray(json.doneCategories)
+            ? json.doneCategories
+            : payload.doneCategories,
+        };
+        setState(confirmed);
+        stateRef.current = confirmed;
+      })
+      .catch(async (err) => {
+        setError(err instanceof Error ? err.message : "Failed to save");
+        // Re-load server state instead of rolling back to a stale local snapshot.
+        try {
+          const res = await fetch("/api/titles-checklist", {
+            cache: "no-store",
+          });
+          const json = await res.json();
+          if (res.ok) {
+            const restored: ChecklistState = {
+              doneCategories: Array.isArray(json.doneCategories)
+                ? json.doneCategories
+                : snapshotBefore.doneCategories,
+            };
+            setState(restored);
+            stateRef.current = restored;
+          } else {
+            setState(snapshotBefore);
+            stateRef.current = snapshotBefore;
+          }
+        } catch {
+          setState(snapshotBefore);
+          stateRef.current = snapshotBefore;
+        }
+      })
+      .finally(() => {
+        setSaving(false);
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to save");
-      setState({
-        doneCategories: Array.isArray(json.doneCategories)
-          ? json.doneCategories
-          : next.doneCategories,
-      });
-    } catch (err) {
-      setState(previous);
-      setError(err instanceof Error ? err.message : "Failed to save");
-    } finally {
-      setSaving(false);
-    }
   }
 
   const filters: { id: Filter; label: string }[] = [
@@ -274,11 +311,7 @@ export function TitleChecklist() {
         total={ALL_CHECKLIST_CATEGORIES.length}
       />
 
-      {error && (
-        <p className="rounded border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">
-          {error}
-        </p>
-      )}
+      {error && <ErrorBanner message={error} />}
 
       {loading ? (
         <p className="text-sm text-zinc-500">Loading…</p>
