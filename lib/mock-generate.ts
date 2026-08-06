@@ -9,7 +9,7 @@ import {
   MEDIA_ALT_TEXT_MAX,
 } from "./product-options";
 import { ensureCustomTitlePrefix } from "./listing-title";
-import { ensureTitleKeywordsInTags } from "./title-tag-overlap";
+import { buildListingTags } from "./tags";
 
 function truncate(str: string, max: number): string {
   if (str.length <= max) return str;
@@ -97,21 +97,17 @@ export function generateMockListing(
     .filter(Boolean)
     .slice(0, 6);
 
-  const tags = ensureTitleKeywordsInTags(
+  const tags = buildListingTags({
+    subject,
     title,
-    [
-      ...trendingKeywords.slice(0, 3),
+    trending: trendingKeywords,
+    candidates: [
       ...marketplaceTagSeeds,
       `${shortSubject} shirt`,
       `${headWord} car gift`,
       `${shortSubject} tee`,
     ],
-    13,
-    {
-      subject,
-      trending: trendingKeywords,
-    }
-  );
+  });
 
   const suggestedPrice = `$${basePrice.toFixed(2)} USD (No background)`;
   const optionsOut = buildOptionsNotes(input);

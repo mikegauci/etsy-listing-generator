@@ -12,8 +12,7 @@ import {
   MEDIA_ALT_TEXT_MIN,
 } from "./product-options";
 import { ensureCustomTitlePrefix } from "./listing-title";
-import { EVERGREEN_TAGS, TAG_MAX_CHARS } from "./tags";
-import { ensureTitleKeywordsInTags } from "./title-tag-overlap";
+import { buildListingTags, EVERGREEN_TAGS, TAG_MAX_CHARS } from "./tags";
 
 const LISTING_JSON_SCHEMA = {
   name: "etsy_listing",
@@ -369,17 +368,14 @@ export async function generateWithOpenAI(
   parsed.description = stripPricesFromDescription(parsed.description)
     .replace(/—/g, "-");
 
-  // Finalize title first, then mirror its keywords into tags.
+  // Finalize title, then pack niche + evergreen tags.
   parsed.title = ensureCustomTitlePrefix(parsed.title || "");
-  parsed.tags = ensureTitleKeywordsInTags(
-    parsed.title,
-    parsed.tags || [],
-    13,
-    {
-      subject: input.subject,
-      trending: trendingKeywords,
-    }
-  );
+  parsed.tags = buildListingTags({
+    subject: input.subject,
+    title: parsed.title,
+    trending: trendingKeywords,
+    candidates: parsed.tags || [],
+  });
 
   return parsed;
 }

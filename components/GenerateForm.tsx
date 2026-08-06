@@ -3,9 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { CopyField } from "./CopyField";
-import { TitleTagOverlapCheck } from "./TitleTagOverlapCheck";
 import { formatTagsLine, parseTagsLine } from "@/lib/tags";
-import { ensureTitleKeywordsInTags } from "@/lib/title-tag-overlap";
 import { PRODUCT_TYPES } from "@/lib/types";
 import type { ListingOutput } from "@/lib/types";
 import {
@@ -251,15 +249,7 @@ export function GenerateForm() {
             <CopyField
               label="Title"
               value={result.title}
-              onChange={(v) =>
-                setResult({
-                  ...result,
-                  title: v,
-                  tags: ensureTitleKeywordsInTags(v, result.tags, 13, {
-                    subject: subject || v,
-                  }),
-                })
-              }
+              onChange={(v) => setResult({ ...result, title: v })}
             />
             <CopyField
               label="Tags (13)"
@@ -274,7 +264,6 @@ export function GenerateForm() {
                 })
               }
             />
-            <TitleTagOverlapCheck title={result.title} tags={result.tags} />
             <CopyField
               label="Description"
               value={result.description}
