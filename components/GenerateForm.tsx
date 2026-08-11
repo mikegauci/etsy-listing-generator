@@ -205,7 +205,7 @@ export function GenerateForm() {
             ))}
           </select>
           <p className="font-mono text-xs text-zinc-600">
-            If it's generic use 16, if it's niche specific like Toyota, or offroad use 9
+            If it is generic use 16, if it is niche specific like Toyota, or offroad use 9
           </p>
         </label>
 
