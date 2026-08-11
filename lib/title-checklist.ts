@@ -12,7 +12,7 @@ export const COMMUNITY_LISTINGS: ChecklistCategory[] = [
   {
     id: "community-jdm",
     kind: "community",
-    title: "Custom JDM T-Shirt",
+    title: "Custom JDM Shirt",
     items: [
       "Toyota Supra",
       "Nissan 370Z",
@@ -28,7 +28,7 @@ export const COMMUNITY_LISTINGS: ChecklistCategory[] = [
   {
     id: "community-american-muscle",
     kind: "community",
-    title: "Custom American Muscle T-Shirt",
+    title: "Custom American Muscle Shirt",
     items: [
       "Ford Mustang",
       "Chevrolet Impala SS",
@@ -44,7 +44,7 @@ export const COMMUNITY_LISTINGS: ChecklistCategory[] = [
   {
     id: "community-truck",
     kind: "community",
-    title: "Custom Truck T-Shirt",
+    title: "Custom Truck Shirt",
     items: [
       "Ford Raptor",
       "Chevrolet C10",
@@ -60,7 +60,7 @@ export const COMMUNITY_LISTINGS: ChecklistCategory[] = [
   {
     id: "community-off-road",
     kind: "community",
-    title: "Custom Off-Road T-Shirt",
+    title: "Custom Off-Road Shirt",
     items: [
       "Toyota Land Cruiser",
       "Jeep Wrangler",
@@ -76,7 +76,7 @@ export const COMMUNITY_LISTINGS: ChecklistCategory[] = [
   {
     id: "community-supercar",
     kind: "community",
-    title: "Custom Supercar T-Shirt",
+    title: "Custom Supercar Shirt",
     items: [
       "Ferrari F40",
       "Lamborghini Aventador",
@@ -92,7 +92,7 @@ export const COMMUNITY_LISTINGS: ChecklistCategory[] = [
   {
     id: "community-car-portrait",
     kind: "community",
-    title: "Custom Car Portrait T-Shirt",
+    title: "Custom Car Portrait Shirt",
     items: [
       "Toyota Supra",
       "Ford Mustang",
@@ -111,7 +111,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-toyota",
     kind: "brand",
-    title: "Custom Toyota T-Shirt",
+    title: "Custom Toyota Shirt",
     items: [
       "Supra MK4",
       "GR Supra",
@@ -127,7 +127,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-ford",
     kind: "brand",
-    title: "Custom Ford T-Shirt",
+    title: "Custom Ford Shirt",
     items: [
       "Mustang GT",
       "Shelby GT350",
@@ -143,7 +143,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-chevrolet",
     kind: "brand",
-    title: "Custom Chevrolet T-Shirt",
+    title: "Custom Chevrolet Shirt",
     items: [
       "Corvette C8 Z06",
       "Corvette C7 ZR1",
@@ -159,7 +159,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-porsche",
     kind: "brand",
-    title: "Custom Porsche T-Shirt",
+    title: "Custom Porsche Shirt",
     items: [
       "911 GT3 RS",
       "911 Turbo S",
@@ -175,7 +175,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-bmw",
     kind: "brand",
-    title: "Custom BMW T-Shirt",
+    title: "Custom BMW Shirt",
     items: [
       "E30 M3",
       "E46 M3",
@@ -191,7 +191,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-honda",
     kind: "brand",
-    title: "Custom Honda T-Shirt",
+    title: "Custom Honda Shirt",
     items: [
       "NSX",
       "Civic Type R FL5",
@@ -207,7 +207,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-nissan",
     kind: "brand",
-    title: "Custom Nissan T-Shirt",
+    title: "Custom Nissan Shirt",
     items: [
       "Skyline GT-R R34",
       "GT-R R35",
@@ -223,7 +223,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-audi",
     kind: "brand",
-    title: "Custom Audi T-Shirt",
+    title: "Custom Audi Shirt",
     items: [
       "RS3",
       "RS4 Avant",
@@ -239,7 +239,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-mercedes",
     kind: "brand",
-    title: "Custom Mercedes T-Shirt",
+    title: "Custom Mercedes Shirt",
     items: [
       "190E Evolution II",
       "C63 AMG",
@@ -255,7 +255,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-dodge",
     kind: "brand",
-    title: "Custom Dodge T-Shirt",
+    title: "Custom Dodge Shirt",
     items: [
       "Challenger Hellcat",
       "Demon 170",
@@ -271,7 +271,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-subaru",
     kind: "brand",
-    title: "Custom Subaru T-Shirt",
+    title: "Custom Subaru Shirt",
     items: [
       "WRX STI",
       "WRX VB",
@@ -287,7 +287,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-mazda",
     kind: "brand",
-    title: "Custom Mazda T-Shirt",
+    title: "Custom Mazda Shirt",
     items: [
       "RX-7 FD",
       "RX-7 FC",
@@ -303,7 +303,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-volkswagen",
     kind: "brand",
-    title: "Custom Volkswagen T-Shirt",
+    title: "Custom Volkswagen Shirt",
     items: [
       "Golf GTI Mk1",
       "Golf GTI Mk8",
@@ -319,7 +319,7 @@ export const BRAND_LISTINGS: ChecklistCategory[] = [
   {
     id: "brand-jeep",
     kind: "brand",
-    title: "Custom Jeep T-Shirt",
+    title: "Custom Jeep Shirt",
     items: [
       "Wrangler Rubicon",
       "Wrangler 392",
