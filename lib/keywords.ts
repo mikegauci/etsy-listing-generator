@@ -3,7 +3,7 @@ import { SHOP_LISTING_COLUMNS } from "./shop-listings";
 import { scoreAgainstSubject, tokenizeSubject } from "./scoring";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-function tokenizeTitle(title: string): string[] {
+export function tokenizeTitle(title: string): string[] {
   const words = title
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")

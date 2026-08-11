@@ -6,17 +6,13 @@ import {
   MEDIA_SLOTS,
   backgroundsByIds,
   formatCustomFieldsNotes,
+  formatListingClosingCopy,
   getDefaultBasePriceUsd,
-  MEDIA_ALT_TEXT_MAX,
 } from "./product-options";
 import { ensureCustomTitlePrefix } from "./listing-title";
+import { buildSeoAltText, enrichDescriptionWithSeoTags, buildAltSeoPhrasePool } from "./seo-copy";
 import { buildListingTags } from "./tags";
 import { formatReferencedListing } from "./shop-listings";
-
-function truncate(str: string, max: number): string {
-  if (str.length <= max) return str;
-  return str.slice(0, max - 1).trimEnd() + "…";
-}
 
 const SECTION_DIVIDER = "____________________";
 
@@ -127,65 +123,85 @@ export function generateMockListing(
   const suggestedPrice = `$${basePrice.toFixed(2)} USD (No background)`;
   const optionsOut = buildOptionsNotes(input);
 
-  const description = [
-    `Looking for a custom ${nicheForTags || subject} ${product}? Personalized car-photo artwork made for enthusiasts and gift buyers.`,
-    ``,
-    SECTION_DIVIDER,
-    ``,
-    `👀 Mockup preview`,
-    `• We send a mockup before anything goes to print`,
-    `• Review it, request changes, and approve when you love it`,
-    `• Not happy with the artwork? Full refund`,
-    ``,
-    SECTION_DIVIDER,
-    ``,
-    `👕 Front or back artwork`,
-    `• Prints on the front or back - choose your side at checkout`,
-    `• Want both sides? Contact us and we can help`,
-    ``,
-    SECTION_DIVIDER,
-    ``,
-    `✨ Details`,
-    `• Product: ${product}`,
-    `• Style: Custom car illustration from your photo`,
-    `• Colors: ${colors}`,
-    product === "t-shirt"
-      ? `• Sizes: ${TSHIRT_SIZES.join(", ")}`
-      : null,
-    ``,
-    SECTION_DIVIDER,
-    ``,
-    `🌆 Backgrounds`,
-    ...backgroundBullets(input),
-    ``,
-    `📸 Personalization`,
-    `• Upload up to 4 vehicle photos (optional)`,
-    `• Add custom text to your artwork (optional)`,
-    ``,
-    SECTION_DIVIDER,
-    ``,
-    `🧺 Materials & care`,
-    `• Premium blank garment (see variations for specs)`,
-    `• Machine wash cold, inside out`,
-    `• Tumble dry low; do not iron directly on the print`,
-    ``,
-    SECTION_DIVIDER,
-    ``,
-    `💬 Questions?`,
-    `Message us anytime - multiple cars, people or pets in the design, or anything else. Happy to help.`,
-    ``,
-    `🏪 Explore the shop`,
-    `Browse Motor Element for more custom car shirts, hoodies, and automotive gifts.`,
-    ``,
-    `Add to cart when you're ready.`,
-  ]
-    .filter((line) => line !== null)
-    .join("\n");
-
-  const altText = truncate(
-    `Custom car illustration of a ${subject} on a ${product}, ${colors} colorway, Motor Element automotive apparel`,
-    MEDIA_ALT_TEXT_MAX
+  const description = enrichDescriptionWithSeoTags(
+    [
+      `Looking for a custom ${nicheForTags || subject} ${product}? Personalized car-photo artwork made for enthusiasts and gift buyers.`,
+      ``,
+      SECTION_DIVIDER,
+      ``,
+      `👀 Mockup preview`,
+      `• We send a mockup before anything goes to print`,
+      `• Review it, request changes, and approve when you love it`,
+      `• Not happy with the artwork? Full refund`,
+      ``,
+      SECTION_DIVIDER,
+      ``,
+      `👕 Front or back artwork`,
+      `• Prints on the front or back - choose your side at checkout`,
+      `• Want both sides? Contact us and we can help`,
+      ``,
+      SECTION_DIVIDER,
+      ``,
+      `✨ Details`,
+      `• Product: ${product}`,
+      `• Style: Custom car illustration from your photo`,
+      `• Colors: ${colors} - contact us for more colors`,
+      product === "t-shirt"
+        ? `• Sizes: ${TSHIRT_SIZES.join(", ")}`
+        : null,
+      ``,
+      SECTION_DIVIDER,
+      ``,
+      `🌆 Backgrounds`,
+      ...backgroundBullets(input),
+      ``,
+      `📸 Personalization`,
+      `• Upload your car photo (optional) - Contact us if you have any queries`,
+      `• Add custom text to your artwork (optional)`,
+      ``,
+      SECTION_DIVIDER,
+      ``,
+      `🧺 Materials & care`,
+      `• Premium blank garment (see variations for specs)`,
+      `• Machine wash cold, inside out`,
+      `• Tumble dry low; do not iron directly on the print`,
+      ``,
+      SECTION_DIVIDER,
+      ``,
+      `💬 Questions?`,
+      `Message us anytime - multiple cars, people or pets in the design, or anything else. Happy to help.`,
+      ``,
+      SECTION_DIVIDER,
+      ``,
+      `🏪 Explore the shop`,
+      `Browse Motor Element for more custom car shirts, hoodies, and automotive gifts.`,
+      ``,
+      SECTION_DIVIDER,
+      ``,
+      formatListingClosingCopy(),
+    ]
+      .filter((line) => line !== null)
+      .join("\n"),
+    tags
   );
+
+  const seoPhrases = buildAltSeoPhrasePool({
+    subject,
+    title,
+    tags,
+    trending: trendingKeywords,
+    extra: marketplaceTagSeeds,
+  });
+
+  const altText = buildSeoAltText({
+    subject,
+    product,
+    slotIndex: 0,
+    tags,
+    seoPhrases,
+    title,
+    trending: trendingKeywords,
+  });
 
   const referencedListings = referenced.map(formatReferencedListing);
 
@@ -209,12 +225,18 @@ export function generateMockListing(
     .filter(Boolean)
     .join(" ");
 
-  const mediaAltTexts = MEDIA_SLOTS.map((slot) => ({
+  const mediaAltTexts = MEDIA_SLOTS.map((slot, i) => ({
     slot,
-    altText: truncate(
-      `Custom ${subject} ${garment} by Motor Element - ${slot.toLowerCase()} showing ${subject} automotive artwork, personalized car illustration style for enthusiasts and gift buyers looking for unique custom apparel`,
-      MEDIA_ALT_TEXT_MAX
-    ),
+    altText: buildSeoAltText({
+      subject,
+      product: garment,
+      slot,
+      slotIndex: i,
+      tags,
+      seoPhrases,
+      title,
+      trending: trendingKeywords,
+    }),
   }));
 
   return {

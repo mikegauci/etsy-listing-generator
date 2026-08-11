@@ -121,8 +121,15 @@ export function stripTitleFiller(title: string): string {
   return parts.join(", ").replace(/\s+/g, " ").trim();
 }
 
-/** Trim to Etsy's preferred title word count (keeps the front-loaded keywords). */
-export function trimTitleWords(title: string, maxWords = 14): string {
+/** Target title length for Motor Element listings (keeps front-loaded keywords). */
+export const TITLE_WORD_MIN = 13;
+export const TITLE_WORD_MAX = 16;
+
+/** Trim to the preferred title word count (keeps the front-loaded keywords). */
+export function trimTitleWords(
+  title: string,
+  maxWords = TITLE_WORD_MAX
+): string {
   const words = title.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
   if (words.length <= maxWords) return words.join(" ");
   // Prefer cutting at a comma boundary when possible.
@@ -160,17 +167,21 @@ function productTitleLabel(productType?: string): string {
 /** Natural trait phrases only — never word-by-word recipient dumps. */
 function titleExtraPhrases(productType?: string): string[] {
   const label = productTitleLabel(productType);
-  return [`Personalized Car Photo ${label}`, "Gift for Him"];
+  return [
+    `Personalized Car Photo ${label}`,
+    "Unique Car Gift",
+    "Gift for Him",
+  ];
 }
 
 /**
- * Expand short titles toward ~10–14 words with clean, natural trait groups.
+ * Expand short titles toward ~13–16 words with clean, natural trait groups.
  * Preserves existing comma segments from the model; only pads when short.
  * Avoids keyword stuffing like "Birthday Gift for Him Dad Boyfriend Men".
  */
 export function fillTitleWordBudget(
   title: string,
-  targetWords = 14,
+  targetWords = TITLE_WORD_MAX,
   productType?: string
 ): string {
   const cleaned = title.replace(/\s+/g, " ").trim().replace(/,\s*$/, "");
@@ -257,8 +268,8 @@ export function ensureCustomTitlePrefix(
     .replace(/^,\s*/, "")
     .replace(/,\s*$/, "");
 
-  t = fillTitleWordBudget(t, 14, productType);
-  t = trimTitleWords(t, 14);
+  t = fillTitleWordBudget(t, TITLE_WORD_MAX, productType);
+  t = trimTitleWords(t, TITLE_WORD_MAX);
 
   return trimTitleChars(t, max);
 }

@@ -12,6 +12,10 @@ import {
   TSHIRT_SIZES,
   MEDIA_SLOTS,
   MEDIA_ALT_TEXT_MAX,
+  THEME_BACKGROUND_COUNT_OPTIONS,
+  LISTING_THEME_BACKGROUND_COUNT,
+  backgroundIdsForThemeCount,
+  type ThemeBackgroundCount,
 } from "@/lib/product-options";
 
 type Result = ListingOutput & { id?: string | null; isMock?: boolean };
@@ -35,6 +39,8 @@ export function GenerateForm() {
   const [subject, setSubject] = useState("");
   const [productType, setProductType] = useState<string>(PRODUCT_TYPES[0]);
   const [colors, setColors] = useState("Black, White");
+  const [themeBackgroundCount, setThemeBackgroundCount] =
+    useState<ThemeBackgroundCount>(LISTING_THEME_BACKGROUND_COUNT);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +108,7 @@ export function GenerateForm() {
           subject,
           productType,
           colors,
+          backgroundIds: backgroundIdsForThemeCount(themeBackgroundCount),
         }),
       });
       const data = await res.json();
@@ -176,6 +183,30 @@ export function GenerateForm() {
             value={colors}
             onChange={(e) => setColors(e.target.value)}
           />
+        </label>
+
+        <label className="block space-y-1">
+          <span className="text-xs uppercase tracking-wide text-zinc-500">
+            Theme backgrounds
+          </span>
+          <select
+            className={fieldClass}
+            value={themeBackgroundCount}
+            onChange={(e) =>
+              setThemeBackgroundCount(
+                Number(e.target.value) as ThemeBackgroundCount
+              )
+            }
+          >
+            {THEME_BACKGROUND_COUNT_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n} backgrounds
+              </option>
+            ))}
+          </select>
+          <p className="font-mono text-xs text-zinc-600">
+            If it's generic use 16, if it's niche specific like Toyota, or offroad use 9
+          </p>
         </label>
 
         {productType === "t-shirt" && (

@@ -13,7 +13,7 @@ export type CustomFieldDef = {
   extraUsd?: number;
 };
 
-/** Artwork-grid backgrounds (24). No + Custom always selected; max 11 total. */
+/** Artwork-grid backgrounds (24). No + Custom always selected; themes selectable. */
 export const BACKGROUND_OPTIONS: BackgroundOption[] = [
   {
     id: "no-background",
@@ -51,11 +51,39 @@ export const BACKGROUND_OPTIONS: BackgroundOption[] = [
   },
 ];
 
-export const MAX_BACKGROUNDS = 11;
+/** Theme background counts offered in the generate UI (excludes no + custom). */
+export const THEME_BACKGROUND_COUNT_OPTIONS = [9, 16] as const;
+export type ThemeBackgroundCount =
+  (typeof THEME_BACKGROUND_COUNT_OPTIONS)[number];
 
 export const ALWAYS_SELECTED_BACKGROUND_IDS = BACKGROUND_OPTIONS.filter(
   (b) => b.alwaysSelected
 ).map((b) => b.id);
+
+export const THEME_BACKGROUND_OPTIONS = BACKGROUND_OPTIONS.filter(
+  (b) => !b.alwaysSelected
+);
+
+/** Max total = max themes + always-selected (no + custom). */
+export const MAX_BACKGROUNDS =
+  Math.max(...THEME_BACKGROUND_COUNT_OPTIONS) +
+  ALWAYS_SELECTED_BACKGROUND_IDS.length;
+
+/** Default listing pack: first N themes in catalog order + always-selected. */
+export function backgroundIdsForThemeCount(
+  count: ThemeBackgroundCount
+): string[] {
+  const themes = THEME_BACKGROUND_OPTIONS.slice(0, count).map((b) => b.id);
+  const always = ALWAYS_SELECTED_BACKGROUND_IDS;
+  // Keep catalog order: no-background first, themes, custom last.
+  const ordered: string[] = [];
+  for (const opt of BACKGROUND_OPTIONS) {
+    if (always.includes(opt.id) || themes.includes(opt.id)) {
+      ordered.push(opt.id);
+    }
+  }
+  return ordered;
+}
 
 export const TSHIRT_COLORS = ["Black", "White"] as const;
 export const TSHIRT_SIZES = [
@@ -120,8 +148,8 @@ export function backgroundsByIds(ids: string[]): BackgroundOption[] {
   return ids.map((id) => map.get(id)).filter(Boolean) as BackgroundOption[];
 }
 
-/** Preset theme backgrounds offered per listing (excludes no background + custom). */
-export const LISTING_THEME_BACKGROUND_COUNT = 9;
+/** Default theme count when none is chosen in the UI. */
+export const LISTING_THEME_BACKGROUND_COUNT: ThemeBackgroundCount = 9;
 
 export function themeBackgroundLabels(ids: string[]): string[] {
   return backgroundsByIds(ids)
@@ -132,12 +160,13 @@ export function themeBackgroundLabels(ids: string[]): string[] {
 /** Customer-facing background blurb for listing descriptions (no prices). */
 export function formatBackgroundMarketingCopy(backgroundIds: string[]): string {
   const themes = themeBackgroundLabels(backgroundIds);
+  const count = themes.length || LISTING_THEME_BACKGROUND_COUNT;
   const examples =
     themes.length > 0
       ? ` Theme options on this listing include: ${themes.join(", ")}.`
       : "";
   return (
-    `Choose from ${LISTING_THEME_BACKGROUND_COUNT} different backgrounds, keep it with no background, ` +
+    `Choose from ${count} different backgrounds, keep it with no background, ` +
     `or we can create a customized background for you.${examples} Select your option at checkout.`
   );
 }
@@ -150,6 +179,38 @@ export function formatCustomFieldsNotes(): string {
     const extra = f.extraUsd != null ? ` (+$${f.extraUsd.toFixed(2)})` : "";
     return `${f.name}: optional text box${extra}`;
   }).join("\n");
+}
+
+const SECTION_DIVIDER = "____________________";
+
+/**
+ * Fixed closing blocks for every listing description (Why Choose Us, terms, social).
+ * Keep wording stable so OpenAI and mock paths stay aligned.
+ */
+export function formatListingClosingCopy(): string {
+  return [
+    `⭐ Why choose us?`,
+    `• Customizable: Fully tailored to your preferences`,
+    `• Fast turnaround: Receive your preview in just 12-48 hours - one of the fastest turnarounds out there`,
+    `• High-quality artwork: Perfect for printing, sharing, or gifting`,
+    `• Unique gift idea: A standout choice for car enthusiasts, truck lovers, or anyone who loves custom car drawings`,
+    ``,
+    SECTION_DIVIDER,
+    ``,
+    `📜 Terms & conditions`,
+    `• We send up to 3 emails or messages for design approval. If we do not hear back after the 3rd email, we will proceed with the order`,
+    `• Each order includes one vehicle. Additional vehicles incur extra charges`,
+    `• Satisfaction guaranteed: Not happy with your design preview? We will refund your money - no questions asked`,
+    ``,
+    SECTION_DIVIDER,
+    ``,
+    `📲 Follow us for more custom designs`,
+    `Stay updated with our latest creations and special offers.`,
+    `• Facebook: https://www.facebook.com/motorelement`,
+    `• Instagram: https://www.instagram.com/motorelement`,
+    ``,
+    `🎁 Order now and surprise the car enthusiast in your life with personalized car art.`,
+  ].join("\n");
 }
 
 export const MEDIA_SLOTS = [

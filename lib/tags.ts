@@ -27,6 +27,65 @@ export const NICHE_TAG_TARGET_MIN = 3;
 const EVERGREEN_SET = new Set(EVERGREEN_TAGS.map((t) => t.toLowerCase()));
 
 /**
+ * Generic apparel/gift words that do not prove a niche tag belongs to the subject.
+ * A niche tag must share at least one non-generic token with the subject/title niche
+ * (stops model typos like "personalized cat" for a car listing).
+ */
+const NICHE_GENERIC_WORDS = new Set([
+  "custom",
+  "personalized",
+  "personalised",
+  "graphic",
+  "gift",
+  "gifts",
+  "shirt",
+  "shirts",
+  "tee",
+  "tees",
+  "tshirt",
+  "tshirts",
+  "t-shirt",
+  "t-shirts",
+  "hoodie",
+  "hoodies",
+  "sweatshirt",
+  "sweatshirts",
+  "photo",
+  "photos",
+  "print",
+  "prints",
+  "apparel",
+  "for",
+  "him",
+  "her",
+  "dad",
+  "boyfriend",
+  "men",
+  "women",
+  "guy",
+  "guys",
+]);
+
+function contentTokens(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 2 && !NICHE_GENERIC_WORDS.has(w));
+}
+
+/** True when the tag shares a real niche token with the subject (not just "shirt"/"gift"). */
+export function tagMatchesSubjectNiche(
+  tag: string,
+  subjectNiche: string
+): boolean {
+  const subjectTokens = new Set(contentTokens(subjectNiche));
+  if (subjectTokens.size === 0) return true;
+  return contentTokens(tag).some((t) => subjectTokens.has(t));
+}
+
+/**
  * Fit a phrase into Etsy's tag length by dropping whole words from the end.
  * For a single overlong word, truncate at max (better than discarding the niche).
  * Avoids dangling stop words like "birthday gift for".
@@ -86,7 +145,7 @@ function normalizeTagKey(value: string): string {
   return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-function isMultiWord(tag: string): boolean {
+export function isMultiWord(tag: string): boolean {
   return tag.trim().split(/\s+/).filter(Boolean).length >= 2;
 }
 
@@ -149,6 +208,8 @@ export function nicheTagCandidates(opts: {
     if (!tag || !isMultiWord(tag)) continue;
     if (isEvergreenTag(tag)) continue;
     if (isRecipientKeywordDump(tag)) continue;
+    // Drop off-niche junk / typos (e.g. "personalized cat" when subject is car/Hellcat).
+    if (!tagMatchesSubjectNiche(tag, niche)) continue;
     {
       const words = tag.split(/\s+/);
       const colorFocused =

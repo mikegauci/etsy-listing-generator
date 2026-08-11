@@ -4,6 +4,8 @@ import {
   BACKGROUND_OPTIONS,
   MAX_BACKGROUNDS,
   MEDIA_SLOTS,
+  LISTING_THEME_BACKGROUND_COUNT,
+  backgroundIdsForThemeCount,
 } from "./product-options";
 
 export const PRODUCT_TYPES = [
@@ -50,7 +52,7 @@ export const generateInputSchema = z
       .min(2)
       .max(MAX_BACKGROUNDS)
       .optional()
-      .default([...ALWAYS_SELECTED_BACKGROUND_IDS]),
+      .default(backgroundIdsForThemeCount(LISTING_THEME_BACKGROUND_COUNT)),
     /** @deprecated use mediaFiles */
     imageName: z.string().max(300).optional().nullable(),
   })

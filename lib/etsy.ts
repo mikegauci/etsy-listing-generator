@@ -224,6 +224,7 @@ export type EtsyListing = {
   price?: { amount: number; divisor: number; currency_code: string };
   state?: string;
   url?: string;
+  original_creation_timestamp?: number;
 };
 
 export type MarketplaceListing = {
@@ -238,6 +239,7 @@ export type MarketplaceListing = {
   price_currency: string | null;
   url: string | null;
   taxonomy_path: string | null;
+  original_creation_timestamp?: number | null;
 };
 
 export type SearchActiveListingsParams = {
@@ -318,7 +320,63 @@ export function mapEtsyListingToMarketplace(
     price_currency: currency,
     url: listing.url || null,
     taxonomy_path: listing.taxonomy_path?.join(" > ") || null,
+    original_creation_timestamp: listing.original_creation_timestamp ?? null,
   };
+}
+
+/**
+ * Public getListing (API key only — no OAuth).
+ * Views are tabulated once daily for active listings and are often 0;
+ * prefer num_favorers for engagement comparisons.
+ */
+export async function fetchListingById(
+  listingId: number
+): Promise<MarketplaceListing> {
+  if (!Number.isFinite(listingId) || listingId <= 0) {
+    throw new Error("Invalid Etsy listing id");
+  }
+
+  const url = `${ETSY_API_BASE}/application/listings/${listingId}`;
+  const res = await fetch(url, {
+    headers: {
+      "x-api-key": getEtsyApiKeyHeader(),
+      Accept: "application/json",
+    },
+    signal: AbortSignal.timeout(12_000),
+  });
+
+  if (res.status === 404) {
+    throw new Error(`Etsy listing ${listingId} was not found`);
+  }
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `Etsy getListing failed: ${res.status} ${text.slice(0, 200)}`
+    );
+  }
+
+  const listing = (await res.json()) as EtsyListing;
+  return mapEtsyListingToMarketplace(listing);
+}
+
+/** Extract a listing id from an Etsy URL or a bare numeric string. */
+export function parseEtsyListingId(input: string): number | null {
+  const raw = input.trim();
+  if (!raw) return null;
+
+  const fromUrl = raw.match(/\/listing\/(\d+)/i);
+  if (fromUrl) {
+    const id = Number(fromUrl[1]);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+
+  if (/^\d+$/.test(raw)) {
+    const id = Number(raw);
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+
+  return null;
 }
 
 /** Re-rank score-sorted results by niche token match + public engagement. */
