@@ -23,10 +23,14 @@ Generates SEO-ready titles, tags, descriptions, and media alt texts by comparing
 3. Add environment variables (see table below) in **Project → Settings → Environment Variables** for Production (and Preview if you want).
 4. Deploy.
 5. After the first deploy, set production URLs:
-   - `NEXT_PUBLIC_APP_URL` → `https://your-app.vercel.app` (or your custom domain)
-   - `ETSY_REDIRECT_URI` → `https://your-app.vercel.app/api/etsy/callback`
-6. In the [Etsy Developers](https://www.etsy.com/developers/your-apps) app settings, add that same callback URL as an allowed redirect URI.
+   - `NEXT_PUBLIC_APP_URL` → `https://etsy-listing-generator-kappa.vercel.app` (or your custom domain)
+   - `ETSY_REDIRECT_URI` → `https://etsy-listing-generator-kappa.vercel.app/api/etsy/callback`
+6. In the [Etsy Developers](https://www.etsy.com/developers/your-apps) app settings, add **both** callback URLs (Etsy allows a list):
+   - `http://localhost:3000/api/etsy/callback` (local)
+   - `https://etsy-listing-generator-kappa.vercel.app/api/etsy/callback` (production)
 7. Apply all Supabase migrations (below), then open the app → log in → **Shop data** → **Connect Etsy** → **Sync now**.
+
+Local `.env.local` should use `http://localhost:3000` for `NEXT_PUBLIC_APP_URL` / `ETSY_REDIRECT_URI`. Vercel Production env should use the Vercel HTTPS URLs. Connect/Reconnect from whichever host you’re on — OAuth uses that host’s callback.
 
 Redeploy after changing env vars so the new values apply.
 
@@ -69,17 +73,20 @@ Open [http://localhost:3000](http://localhost:3000) — password gate, then Gene
 
 ## Etsy
 
-1. Create an Etsy app and set the redirect URI to `/api/etsy/callback` on your deployed domain.
-2. Put keystring, shared secret, and shop ID in env.
-3. Log in → **Shop data** → **Connect Etsy** → **Sync now**.
+1. Create an Etsy app and register callback URLs for local and production, e.g.:
+   - `http://localhost:3000/api/etsy/callback`
+   - `https://etsy-listing-generator-kappa.vercel.app/api/etsy/callback`
+2. Put keystring, shared secret, and shop ID in env. Point `NEXT_PUBLIC_APP_URL` / `ETSY_REDIRECT_URI` at the environment you’re configuring (localhost in `.env.local`, Vercel URL in Vercel env).
+3. Log in → **Shop data** → **Connect Etsy** / **Reconnect Etsy** → **Sync now**. For Duplicate drafts, reconnect and approve `listings_w`.
 
-Marketplace search (used during Generate) only needs the API key. Syncing your own listings needs OAuth (`listings_r listings_w shops_r`).
+Marketplace search (used during Generate) only needs the API key. Syncing your own listings and creating drafts needs OAuth (`listings_r listings_w shops_r`).
 
 ## App pages
 
 | Route | Purpose |
 |---|---|
 | `/` | Generate listing (title, tags, description, media alt texts) |
+| `/duplicate` | Duplicate an active listing into an Etsy draft (edit media/copy first) |
 | `/titles` | Checklist of community + brand listing titles (progress in Supabase) |
 | `/shop-data` | Connect Etsy, sync listings, keyword stats |
 | `/history` | Past generations |

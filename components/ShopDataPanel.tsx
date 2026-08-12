@@ -84,7 +84,7 @@ export function ShopDataPanel() {
             href="/api/etsy/auth"
             className="rounded border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 hover:border-zinc-500"
           >
-            Connect Etsy
+            {data?.etsyConnected ? "Reconnect Etsy" : "Connect Etsy"}
           </a>
           <button
             type="button"
@@ -105,6 +105,26 @@ export function ShopDataPanel() {
             : ""}
           {" · "}
           {data.listings.length} listings loaded
+        </p>
+      )}
+
+      {data?.etsyConnected && (
+        <p className="text-sm text-zinc-500">
+          Duplicate drafts need write access (`listings_w`). If create draft
+          fails with a scope error, use{" "}
+          <a href="/api/etsy/auth" className="text-amber-400 hover:underline">
+            Reconnect Etsy
+          </a>{" "}
+          on this same site (localhost or Vercel) and approve all permissions.
+          Register both callback URLs in your Etsy app:{" "}
+          <span className="font-mono text-xs text-zinc-400">
+            http://localhost:3000/api/etsy/callback
+          </span>{" "}
+          and{" "}
+          <span className="font-mono text-xs text-zinc-400">
+            https://etsy-listing-generator-kappa.vercel.app/api/etsy/callback
+          </span>
+          .
         </p>
       )}
 
