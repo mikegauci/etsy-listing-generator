@@ -13,6 +13,7 @@ import { ensureCustomTitlePrefix } from "./listing-title";
 import { buildSeoAltText, enrichDescriptionWithSeoTags, buildAltSeoPhrasePool } from "./seo-copy";
 import { buildListingTags } from "./tags";
 import { formatReferencedListing } from "./shop-listings";
+import { getSeoBriefForSubject } from "./title-checklist";
 
 const SECTION_DIVIDER = "____________________";
 
@@ -78,20 +79,39 @@ export function generateMockListing(
     product === "t-shirt"
       ? "T-Shirt"
       : product.charAt(0).toUpperCase() + product.slice(1);
-  // Subject may already be a full listing title (e.g. checklist "Custom JDM T-Shirt").
-  const subjectForTitle = subject.replace(/^custom\s+/i, "").trim() || subject;
-  const alreadyHasProduct =
-    /\s+(t-?shirts?|tees?|hoodies?|sweatshirts?|tank\s*tops?|mugs?|posters?|stickers?|tote\s*bags?|phone\s*cases?|canvas\s*prints?|digital\s*downloads?)$/i.test(
-      subjectForTitle
-    );
-  const title = ensureCustomTitlePrefix(
-    alreadyHasProduct
+  // Subject may already be a full listing concept (e.g. checklist "Custom JDM Car Shirt").
+  const seoBrief = getSeoBriefForSubject(subject);
+  let rawTitle: string;
+  if (seoBrief?.giftPrimary) {
+    rawTitle = [
+      seoBrief.lead,
+      ...seoBrief.support.slice(0, 3),
+    ].join(", ");
+  } else if (seoBrief) {
+    const nicheBit = seoBrief.niche[0];
+    const parts = [
+      seoBrief.photoPrimary
+        ? `${seoBrief.lead} From Your Car Photo`
+        : `${seoBrief.lead} From Your Photo`,
+    ];
+    if (nicheBit && !parts[0].toLowerCase().includes(nicheBit.toLowerCase())) {
+      parts.push(nicheBit.includes("Shirt") ? nicheBit : `${nicheBit} Shirt`);
+    }
+    parts.push(...seoBrief.support.slice(0, 2));
+    rawTitle = parts.join(", ");
+  } else {
+    const subjectForTitle = subject.replace(/^custom\s+/i, "").trim() || subject;
+    const alreadyHasProduct =
+      /\s+(t-?shirts?|tees?|hoodies?|sweatshirts?|tank\s*tops?|mugs?|posters?|stickers?|tote\s*bags?|phone\s*cases?|canvas\s*prints?|digital\s*downloads?)$/i.test(
+        subjectForTitle
+      );
+    rawTitle = alreadyHasProduct
       ? subjectForTitle
-      : `${subjectForTitle} ${garment}`,
-    140,
-    product
-  );
+      : `${subjectForTitle} ${garment}`;
+  }
+  const title = ensureCustomTitlePrefix(rawTitle, 140, product);
 
+  const subjectForTitle = subject.replace(/^custom\s+/i, "").trim() || subject;
   const nicheForTags = subjectForTitle
     .replace(
       /\s+(t-?shirts?|tees?|hoodies?|sweatshirts?|tank\s*tops?|mugs?|posters?|stickers?|tote\s*bags?|phone\s*cases?|canvas\s*prints?|digital\s*downloads?)$/i,
@@ -114,6 +134,8 @@ export function generateMockListing(
     trending: trendingKeywords,
     candidates: [
       ...marketplaceTagSeeds,
+      ...(seoBrief?.niche ?? []),
+      ...(seoBrief?.support ?? []).slice(0, 2),
       `${shortSubject} shirt`,
       `${headWord} car gift`,
       `${shortSubject} tee`,

@@ -26,6 +26,10 @@ import {
   formatReferencedListing,
   resolveMediaContext,
 } from "./shop-listings";
+import {
+  getSeoBriefForSubject,
+  type ChecklistSeoBrief,
+} from "./title-checklist";
 
 const LISTING_JSON_SCHEMA = {
   name: "etsy_listing",
@@ -98,7 +102,7 @@ function buildSystemPrompt(): string {
 - In seoNotes: briefly say which marketplace vs shop patterns drove the title and tags.
 
 ## 2026 Etsy description SEO (must follow)
-- First ~160 characters are highest priority (Etsy snippet + Google meta). Lead with the niche primary keyword + product type + buyer intent in sentence 1 (e.g. "Custom Ford Mustang t-shirt"). Keep the opening paragraph plain text (no emoji in the first ~160 chars).
+- First ~160 characters are highest priority (Etsy snippet + Google meta). Lead with the strongest relevant search phrase + product type + buyer intent in sentence 1 (e.g. "Custom car shirt from your photo"). Keep the opening paragraph plain text (no emoji in the first ~160 chars).
 - Align title, opening description, and tags on the SAME primary niche phrase.
 - Write natural complete sentences; weave long-tail keywords AND the recommended listing tag phrases (your niche tags + the evergreen set) into useful copy. NEVER dump a bare comma-separated keyword list at the bottom.
 - Aim ~200–350 words. Prefer short paragraphs (1–2 sentences) and bullets — never a wall of text.
@@ -125,24 +129,32 @@ function buildSystemPrompt(): string {
 - Before the CTA: invite buyers to message/contact the shop for more info — e.g. multiple cars in one artwork, adding people or pets, or any other questions (required in every description).
 - Then: shop visit CTA — REQUIRED: invite buyers to browse the Motor Element store for more custom car apparel and related products (word naturally, e.g. "Explore our shop for more designs" — not stiff or salesy).
 - End with the REQUIRED closing blocks (Why choose us, Terms & conditions, Follow us) using the exact meaning and links from the closing copy below. Do not invent different policies.
-- Title (follow Etsy’s official tips + shop voice + marketplace winners):
-  • ALWAYS start with the word "Custom" as the first word (e.g. "Custom Ford Mustang T-Shirt, Personalized Car Photo Shirt, Gift for Him"). Never lead with the niche, product type, or any other word.
+- Title (follow Etsy’s official tips + shop voice + researched keyword priorities):
+  • The Subject field is an INTERNAL listing concept — not necessarily the final SEO title. Prioritize strong researched phrases when they fit the concept.
+  • Researched high-value phrases (use only when relevant; do NOT stuff all into every title): "Custom Photo Shirt", "Custom Car Shirt", "Custom Photo T-Shirt", "Custom Picture Shirt", "JDM" / "JDM Shirt", "Car Guy Gift", "Racing Gift", "Racing Shirt", "Classic Car".
+  • Usually start with "Custom". Exception: when gift intent is primary, you MAY lead with "Car Guy Gift" (e.g. "Car Guy Gift, Custom Car Shirt From Your Photo, Custom Photo Shirt, Personalized Car T-Shirt").
+  • Lead with the strongest highly relevant search phrase for THIS concept, then supporting phrases. Prefer "Custom Car Shirt" for car-shirt listings; "Custom Photo Shirt" / "Custom Photo T-Shirt" when photo customization is primary; "Car Guy Gift" when gift is primary.
+  • Niche terms (JDM, racing, classic car, truck, rally, muscle, etc.) only when they accurately match the concept — never force them.
   • Clearly state what you’re selling (t-shirt, hoodie, mug, etc.) — not vague “art” alone.
-  • Put the most important traits upfront in the first ~40 chars after Custom: niche subject + product type.
   • Aim for 13–16 natural words (prefer ~15). Hard max 140 characters. Titles under 13 words are too short.
-  • Preferred title pattern: Custom {niche} {Product}, Personalized Car Photo {Product}, Unique Car Gift, Gift for Him — match the product type (do not say Shirt for mugs/posters). Use enough clean trait groups to land in 13–16 words.
+  • Preferred patterns (examples of direction, not templates to copy blindly):
+    - Custom Car Shirt From Your Photo, JDM Shirt, Custom Photo T-Shirt, Car Guy Gift
+    - Custom Photo Shirt From Your Car Photo, Custom Car Shirt, Personalized Car T-Shirt, Car Guy Gift
+    - Custom Racing Car Shirt From Your Photo, Custom Car Shirt, Racing Gift, Car Guy Gift
+    - Custom Classic Car Shirt From Your Photo, Custom Car Shirt, Classic Car Gift, Custom Photo Shirt
+  • NEVER invent manufacturer-specific SEO phrases (forbidden: "Custom BMW Shirt", "Custom Ford Mustang T-Shirt" for SEO). Do not use trademarked manufacturer names merely for SEO. Describe the product intent, not a make/model SEO dump.
   • NEVER keyword-stuff recipients or occasions into one blob (forbidden: "Birthday Gift for Him Dad Boyfriend Men", "Gift for Him Dad Boyfriend"). One clean gift phrase is enough — evergreen tags already cover dad/boyfriend.
-  • If the niche is long, keep Custom + niche + product first and drop trailing gift phrases so you stay ≤16 words.
+  • If the niche is long, keep the lead phrase + product first and drop trailing gift phrases so you stay ≤16 words.
   • NEVER include garment colors in the title or tags (no Black, White, color names, or color lists). Colors belong only in the description variants section.
-  • NEVER put description concepts in the title: no "front", "back", "front & back", "apparel", "illustration", "vehicle", "owners", or "guy". Front/back print belongs only in the description artwork section.
+  • NEVER put description concepts in the title: no "front", "back", "front & back", "apparel", "illustration", "vehicle", or "owners". Front/back print belongs only in the description artwork section. "Car Guy Gift" as an exact phrase IS allowed when relevant; do not pad with bare "guy".
   • Keep it scannable with commas separating trait groups like existing shop titles.
   • Do NOT repeat the same word twice; move subjective hype (“perfect”, “beautiful”, “amazing”) to the description.
   • Only mention holidays/recipients when essential to the item (e.g. “Father’s Day gift” only if that’s the hook).
   • Never include price, shipping, discounts, or sales language in the title.
   • Match comma rhythm of shop examples while obeying the rules above.
-- Tags: return ONLY 3 niche-specific tags for this subject (each ≤20 chars; a 4th backup is OK). Do NOT include the evergreen set below — the system always appends all 10. Niche tags MUST echo important title keywords (make/model + product/gift angles from the title). Prefer trending Etsy search terms and marketplace tag patterns when they fit. Exact-phrase duplicates are not allowed; shared words across tags are OK. NEVER use color names in tags.
+- Tags: return ONLY 3 niche-specific tags for this subject (each ≤20 chars; a 4th backup is OK). Do NOT include the evergreen set below — the system always appends all 10. Niche tags MUST echo important title keywords (concept niche + product/gift angles from the title — not manufacturer names for SEO). Prefer trending Etsy search terms and marketplace tag patterns when they fit. Exact-phrase duplicates are not allowed; shared words across tags are OK. NEVER use color names in tags.
 - Fixed evergreen tags (appended automatically — do not output these): ${EVERGREEN_TAGS.join(", ")}
-- If niche-specific shop examples exist (e.g. Ford), blend those with marketplace phrasing. If none, use marketplace title/tag patterns + top Custom Car product-type shop listings as the structural template.
+- If niche-specific shop examples exist, blend those with marketplace phrasing. If none, use marketplace title/tag patterns + top Custom Car product-type shop listings as the structural template.
 - Avoid restricted/trademarked claims; do not invent licensed OEM branding.
 - description field: NEVER include prices, dollar amounts, or "+$X" fees — mention backgrounds and options by name only.
 - description field: NEVER use em dashes. Use commas, periods, or regular hyphens (-) instead.
@@ -150,6 +162,29 @@ function buildSystemPrompt(): string {
 - Media filenames are context only
 - Alt text (altText + mediaAltTexts): SEO for listing images. Each mediaAltTexts entry MUST be UNIQUE to its slot (different visual description + different SEO phrase mix). Describe what that specific image shows, include the niche subject, and weave a small rotating set of SEO phrases (niche tags, evergreen tags, AND extra long-tail phrases that may not be in the top-13 tags). Do not paste the same keyword list into every slot. Target ${MEDIA_ALT_TEXT_MIN}-${MEDIA_ALT_TEXT_MAX} characters each. Never start with "Image of" or "Photo of".
 - Description SEO tags: the opening paragraph and gift/product sections MUST include your niche tags plus evergreen phrases as exact wording where natural (e.g. "custom car shirt", "personalized gift", "gift for him"). Still write readable sentences — not a tag dump.`;
+}
+
+function formatSeoBriefBlock(
+  subject: string,
+  brief: ChecklistSeoBrief | null
+): string {
+  if (!brief) {
+    return `SEO brief for this subject: none matched a roadmap concept — treat "${subject}" as the listing concept. Prefer "Custom Car Shirt" / "Custom Photo Shirt" / "Car Guy Gift" only when they fit; do not invent manufacturer SEO phrases.`;
+  }
+  const niche = brief.niche.length ? brief.niche.join(", ") : "(none)";
+  const support = brief.support.length ? brief.support.join(", ") : "(none)";
+  const flags = [
+    brief.giftPrimary ? "gift-primary (may lead with Car Guy Gift)" : null,
+    brief.photoPrimary ? "photo-primary (prefer Custom Photo Shirt phrasing)" : null,
+  ]
+    .filter(Boolean)
+    .join("; ");
+  return `SEO brief for this INTERNAL listing concept (use selectively — do not keyword-stuff):
+- Lead phrase: ${brief.lead}
+- Niche terms for THIS concept only: ${niche}
+- Supporting phrases (pick what fits naturally): ${support}
+${flags ? `- Intent flags: ${flags}` : ""}
+Remember: the concept title is not the final Etsy title. Build a natural title that leads with the strongest relevant researched phrase.`;
 }
 
 function buildUserPrompt(
@@ -160,7 +195,7 @@ function buildUserPrompt(
 ): string {
   const examples =
     referenced.length === 0
-      ? "No shop listings available. Use Motor Element custom car apparel title pattern: niche subject + product + personalized/gift phrasing."
+      ? "No shop listings available. Use Motor Element custom car apparel title pattern: strong researched phrase + product + personalized/gift phrasing (no manufacturer SEO dumps)."
       : referenced
           .map((r, i) => {
             const price =
@@ -223,9 +258,16 @@ ${trendingKeywords.join(", ")}`
   const basePrice =
     input.price != null ? input.price : getDefaultBasePriceUsd();
 
+  const seoBrief = getSeoBriefForSubject(input.subject);
+  const seoBriefBlock = formatSeoBriefBlock(input.subject, seoBrief);
+  const leadRule = seoBrief?.giftPrimary
+    ? 'gift-primary: you MAY lead with "Car Guy Gift"'
+    : 'usually lead with "Custom" + strongest relevant phrase';
+
   return `Write a listing that belongs in this shop's catalog for this niche subject. Compare marketplace comps vs your shop examples to choose the strongest title and tags.
 
-Subject / niche keywords (MUST appear in title + first ~160 chars of description): ${input.subject}
+Subject / internal listing concept: ${input.subject}
+${seoBriefBlock}
 Product type: ${input.productType}
 Color/variants text (description / options only — NEVER put colors in title or tags): ${input.colors || "Black, White"}
 Base / No-background price (USD): ${basePrice}
@@ -235,16 +277,16 @@ Avg matched shop-comp price: ${avg || "n/a"}
 
 ${trendingBlock}
 
-Marketplace title patterns (borrow phrasing patterns that fit Motor Element — do not copy brand names):
+Marketplace title patterns (borrow phrasing patterns that fit Motor Element — do not copy brand names or invent manufacturer SEO titles):
 ${marketplaceTitles || "(none)"}
 
-Title templates from YOUR shop (adapt for "${input.subject}" — first word MUST be Custom; aim for 13–16 clean words, max 140 chars; NEVER stuff Birthday/Dad/Boyfriend/Men into one phrase; NEVER include colors, front/back print language, apparel, illustration, vehicle, owners, or guy; follow Etsy title rules above):
-${titleTemplates || `(none — e.g. Custom Ford Mustang T-Shirt, Personalized Car Photo Shirt, Gift for Him)`}
+Title templates from YOUR shop (adapt for concept "${input.subject}" — ${leadRule}; aim for 13–16 clean words, max 140 chars; NEVER stuff Birthday/Dad/Boyfriend/Men into one phrase; NEVER include colors, front/back print language, apparel, illustration, vehicle, or owners; NEVER create manufacturer-specific SEO phrases; follow Etsy title rules above):
+${titleTemplates || `(none — e.g. Custom Car Shirt From Your Photo, Custom Photo T-Shirt, Car Guy Gift)`}
 
 Niche tags only (tags field): return 3 niche-specific tags for "${input.subject}" (≤${TAG_MAX_CHARS} chars each; optional 4th backup OK). The system appends these evergreen tags automatically — do not include them: ${EVERGREEN_TAGS.join(", ")}
 
 Description structure (description field only — NO prices anywhere in description). Keep it easy to read: short opening, then bullets under each heading. No walls of text, no ALL CAPS. One emoji on each section header only.
-1) One short keyword-first opening paragraph (subject + product + gift intent) — first 160 chars matter most; NO emoji. Weave niche tags + evergreen SEO phrases as exact wording naturally (custom car shirt, personalized gift, gift for him, etc.) — readable sentences, not a keyword dump.
+1) One short keyword-first opening paragraph (concept niche + product + gift intent) — first 160 chars matter most; NO emoji. Weave niche tags + evergreen SEO phrases as exact wording naturally (custom car shirt, personalized gift, gift for him, etc.) — readable sentences, not a keyword dump.
 2) Divider \`____________________\`, then section headings with one leading emoji each
 3) 👀 Mockup preview — bullets: mockup before print; request changes; full refund if they dislike the artwork
 4) 👕 Front or back artwork — bullets: front OR back (choose at checkout); contact shop for both sides. Do NOT say both sides are included by default

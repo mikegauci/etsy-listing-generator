@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ALL_CHECKLIST_CATEGORIES,
-  BRAND_LISTINGS,
   COMMUNITY_LISTINGS,
   EMPTY_CHECKLIST_STATE,
+  TARGETED_LISTINGS,
   googleImagesUrl,
   type ChecklistCategory,
   type ChecklistState,
@@ -283,9 +283,9 @@ export function TitleChecklist() {
         <div>
           <h1 className="text-xl font-semibold text-zinc-100">Titles</h1>
           <p className="mt-1 max-w-xl text-sm text-zinc-500">
-            Checklist of listing titles to create. Community pages use 9
-            brand+model mockups; brand pages use 9 models — so each listing
-            feels distinct.
+            Checklist of listing concepts to create. Each concept uses 9 vehicle
+            mockup references so listings feel distinct while targeting broader
+            search intents.
           </p>
         </div>
         <div className="flex gap-1 rounded border border-zinc-800 p-0.5">
@@ -319,7 +319,7 @@ export function TitleChecklist() {
         <>
           <Section
             title="Community listings"
-            hint="Use 9 different brand + models in mockups — click for Google Images"
+            hint="Use 9 different vehicle mockups — click for Google Images"
             categories={COMMUNITY_LISTINGS}
             state={state}
             filter={filter}
@@ -327,9 +327,9 @@ export function TitleChecklist() {
             onToggleCategory={toggleCategory}
           />
           <Section
-            title="Brand listings"
-            hint="Use 9 different models from that brand — click a model for Google Images"
-            categories={BRAND_LISTINGS}
+            title="Targeted listings"
+            hint="Use 9 different vehicle mockups for each search intent — click for Google Images"
+            categories={TARGETED_LISTINGS}
             state={state}
             filter={filter}
             saving={saving}
@@ -340,7 +340,7 @@ export function TitleChecklist() {
 
       <p className="text-xs text-zinc-600">
         Progress is saved to Supabase. Tick a title when the listing is live;
-        brand/model chips open Google Images for mockup reference.
+        vehicle chips open Google Images for mockup reference.
       </p>
     </div>
   );

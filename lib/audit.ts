@@ -178,12 +178,12 @@ export function collectFindings(fields: AuditableFields): {
   const description = fields.description || "";
   const productType = fields.productType || "t-shirt";
 
-  if (!/^custom\b/i.test(title)) {
+  if (!/^custom\b/i.test(title) && !/^car\s+guy\s+gift\b/i.test(title)) {
     pushFinding(findings, {
       id: "title-custom-prefix",
       severity: "high",
-      message: 'Title does not start with "Custom".',
-      suggestion: 'Prefix the title with "Custom".',
+      message: 'Title does not start with "Custom" (or "Car Guy Gift" for gift-primary).',
+      suggestion: 'Prefix the title with "Custom", or lead with "Car Guy Gift" when gift intent is primary.',
     });
   }
 
@@ -195,7 +195,7 @@ export function collectFindings(fields: AuditableFields): {
       message: `Title has ${words} words (target 13–16).`,
       suggestion:
         words < 13
-          ? "Pad with natural trait phrases (e.g. Personalized Car Photo Shirt, Unique Car Gift)."
+          ? "Pad with natural trait phrases (e.g. Custom Photo Shirt, Car Guy Gift)."
           : "Trim trailing filler segments.",
     });
   }

@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin, hasSupabaseConfig } from "@/lib/supabase";
-import { ALL_CHECKLIST_CATEGORIES } from "@/lib/title-checklist";
+import { normalizeChecklistCategoryIds } from "@/lib/title-checklist";
 import { apiError } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
-
-const validCategoryIds = new Set(ALL_CHECKLIST_CATEGORIES.map((c) => c.id));
 
 const putSchema = z.object({
   doneCategories: z.array(z.string().min(1).max(100)).max(100),
@@ -32,15 +30,14 @@ export async function GET() {
       return apiError(500, "Failed to load title checklist", error);
     }
 
-    const done = Array.isArray(data?.done_categories)
+    const raw = Array.isArray(data?.done_categories)
       ? data.done_categories.filter(
-          (id: unknown): id is string =>
-            typeof id === "string" && validCategoryIds.has(id)
+          (id: unknown): id is string => typeof id === "string"
         )
       : [];
 
     return NextResponse.json({
-      doneCategories: done,
+      doneCategories: normalizeChecklistCategoryIds(raw),
       updatedAt: data?.updated_at ?? null,
     });
   } catch (err) {
@@ -63,10 +60,8 @@ export async function PUT(request: Request) {
       );
     }
 
-    const doneCategories = Array.from(
-      new Set(
-        parsed.data.doneCategories.filter((id) => validCategoryIds.has(id))
-      )
+    const doneCategories = normalizeChecklistCategoryIds(
+      parsed.data.doneCategories
     );
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
@@ -87,7 +82,9 @@ export async function PUT(request: Request) {
     }
 
     return NextResponse.json({
-      doneCategories: data.done_categories ?? [],
+      doneCategories: normalizeChecklistCategoryIds(
+        Array.isArray(data.done_categories) ? data.done_categories : []
+      ),
       updatedAt: data.updated_at ?? null,
     });
   } catch (err) {

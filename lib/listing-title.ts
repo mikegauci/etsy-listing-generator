@@ -34,7 +34,7 @@ const TITLE_FILLER_WORDS = new Set([
   "vehicles",
   "owner",
   "owners",
-  "guy",
+  // "guy" alone is not banned — "Car Guy Gift" is a researched SEO phrase.
   "guys",
 ]);
 
@@ -168,8 +168,9 @@ function productTitleLabel(productType?: string): string {
 function titleExtraPhrases(productType?: string): string[] {
   const label = productTitleLabel(productType);
   return [
+    `Custom Photo ${label}`,
     `Personalized Car Photo ${label}`,
-    "Unique Car Gift",
+    "Car Guy Gift",
     "Gift for Him",
   ];
 }
@@ -237,7 +238,12 @@ function trimTitleChars(title: string, max: number): string {
   return cut.replace(/,\s*$/, "");
 }
 
-/** Ensure listing titles start with "Custom" (Motor Element catalog convention). */
+/**
+ * Ensure listing titles follow Motor Element conventions:
+ * - Usually start with "Custom"
+ * - Gift-primary titles may lead with "Car Guy Gift"
+ * - Enforce word/char limits after cleanup
+ */
 export function ensureCustomTitlePrefix(
   title: string,
   max = 140,
@@ -246,7 +252,9 @@ export function ensureCustomTitlePrefix(
   let t = stripTitleFiller(stripGarmentColorsFromTitle(title));
   if (!t) return "Custom";
 
-  if (/^custom\b/i.test(t)) {
+  if (/^car\s+guy\s+gift\b/i.test(t)) {
+    t = t.replace(/^car\s+guy\s+gift\b/i, "Car Guy Gift");
+  } else if (/^custom\b/i.test(t)) {
     t = t.replace(/^custom\b/i, "Custom");
   } else {
     t = `Custom ${t}`;
