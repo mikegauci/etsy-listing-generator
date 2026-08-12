@@ -132,16 +132,17 @@ function buildSystemPrompt(): string {
 - Title (follow Etsy’s official tips + shop voice + researched keyword priorities):
   • The Subject field is an INTERNAL listing concept — not necessarily the final SEO title. Prioritize strong researched phrases when they fit the concept.
   • Researched high-value phrases (use only when relevant; do NOT stuff all into every title): "Custom Photo Shirt", "Custom Car Shirt", "Custom Photo T-Shirt", "Custom Picture Shirt", "JDM" / "JDM Shirt", "Car Guy Gift", "Racing Gift", "Racing Shirt", "Classic Car".
-  • Usually start with "Custom". Exception: when gift intent is primary, you MAY lead with "Car Guy Gift" (e.g. "Car Guy Gift, Custom Car Shirt From Your Photo, Custom Photo Shirt, Personalized Car T-Shirt").
+  • Usually start with "Custom". Exception: when gift intent is primary, you MAY lead with "Car Guy Gift" (e.g. "Car Guy Gift, Custom Car Shirt, Custom Photo Shirt, Personalized T-Shirt").
   • Lead with the strongest highly relevant search phrase for THIS concept, then supporting phrases. Prefer "Custom Car Shirt" for car-shirt listings; "Custom Photo Shirt" / "Custom Photo T-Shirt" when photo customization is primary; "Car Guy Gift" when gift is primary.
   • Niche terms (JDM, racing, classic car, truck, rally, muscle, etc.) only when they accurately match the concept — never force them.
   • Clearly state what you’re selling (t-shirt, hoodie, mug, etc.) — not vague “art” alone.
   • Aim for 13–16 natural words (prefer ~15). Hard max 140 characters. Titles under 13 words are too short.
+  • Keep EVERY comma segment short (about 2–4 words). Prefer compact researched phrases. Do NOT write long-tail segments like "Custom Car Shirt From Your Photo", "From Your Car Photo", or "Personalized Car Photo Shirt" — those waste the title. Photo personalization is covered by short phrases such as "Custom Photo Shirt".
   • Preferred patterns (examples of direction, not templates to copy blindly):
-    - Custom Car Shirt From Your Photo, JDM Shirt, Custom Photo T-Shirt, Car Guy Gift
-    - Custom Photo Shirt From Your Car Photo, Custom Car Shirt, Personalized Car T-Shirt, Car Guy Gift
-    - Custom Racing Car Shirt From Your Photo, Custom Car Shirt, Racing Gift, Car Guy Gift
-    - Custom Classic Car Shirt From Your Photo, Custom Car Shirt, Classic Car Gift, Custom Photo Shirt
+    - Custom Car Shirt, JDM Shirt, Custom Photo T-Shirt, Car Guy Gift
+    - Custom Photo Shirt, Custom Car Shirt, Personalized T-Shirt, Car Guy Gift
+    - Custom Racing Car Shirt, Custom Car Shirt, Racing Gift, Car Guy Gift
+    - Custom Classic Car Shirt, Custom Car Shirt, Classic Car Gift, Custom Photo Shirt
   • NEVER invent manufacturer-specific SEO phrases (forbidden: "Custom BMW Shirt", "Custom Ford Mustang T-Shirt" for SEO). Do not use trademarked manufacturer names merely for SEO. Describe the product intent, not a make/model SEO dump.
   • NEVER keyword-stuff recipients or occasions into one blob (forbidden: "Birthday Gift for Him Dad Boyfriend Men", "Gift for Him Dad Boyfriend"). One clean gift phrase is enough — evergreen tags already cover dad/boyfriend.
   • If the niche is long, keep the lead phrase + product first and drop trailing gift phrases so you stay ≤16 words.
@@ -152,7 +153,7 @@ function buildSystemPrompt(): string {
   • Only mention holidays/recipients when essential to the item (e.g. “Father’s Day gift” only if that’s the hook).
   • Never include price, shipping, discounts, or sales language in the title.
   • Match comma rhythm of shop examples while obeying the rules above.
-- Tags: return ONLY 3 niche-specific tags for this subject (each ≤20 chars; a 4th backup is OK). Do NOT include the evergreen set below — the system always appends all 10. Niche tags MUST echo important title keywords (concept niche + product/gift angles from the title — not manufacturer names for SEO). Prefer trending Etsy search terms and marketplace tag patterns when they fit. Exact-phrase duplicates are not allowed; shared words across tags are OK. NEVER use color names in tags.
+- Tags: return ONLY 3 niche-specific tags for this subject (each ≤20 chars; a 4th backup is OK). Do NOT include the evergreen set below — the system always appends all 10. Niche tags MUST be short complete 2–3 word phrases that fit entirely in 20 characters — never long-tail lines like "car shirt from your photo" (those truncate to broken tags like "car shirt from your"). Prefer compact niche phrases (e.g. "jdm shirt", "jdm car shirt", "racing gift"). Niche tags MUST echo important title keywords (concept niche + product/gift angles — not manufacturer names for SEO). Prefer trending Etsy search terms and marketplace tag patterns when they fit. Exact-phrase duplicates are not allowed; shared words across tags are OK. NEVER use color names in tags.
 - Fixed evergreen tags (appended automatically — do not output these): ${EVERGREEN_TAGS.join(", ")}
 - If niche-specific shop examples exist, blend those with marketplace phrasing. If none, use marketplace title/tag patterns + top Custom Car product-type shop listings as the structural template.
 - Avoid restricted/trademarked claims; do not invent licensed OEM branding.
@@ -184,7 +185,7 @@ function formatSeoBriefBlock(
 - Niche terms for THIS concept only: ${niche}
 - Supporting phrases (pick what fits naturally): ${support}
 ${flags ? `- Intent flags: ${flags}` : ""}
-Remember: the concept title is not the final Etsy title. Build a natural title that leads with the strongest relevant researched phrase.`;
+Remember: the concept title is not the final Etsy title. Build a natural title that leads with the strongest relevant researched phrase. Keep each comma segment short (2–4 words) — never "… From Your Photo" long-tails.`;
 }
 
 function buildUserPrompt(
@@ -281,9 +282,9 @@ Marketplace title patterns (borrow phrasing patterns that fit Motor Element — 
 ${marketplaceTitles || "(none)"}
 
 Title templates from YOUR shop (adapt for concept "${input.subject}" — ${leadRule}; aim for 13–16 clean words, max 140 chars; NEVER stuff Birthday/Dad/Boyfriend/Men into one phrase; NEVER include colors, front/back print language, apparel, illustration, vehicle, or owners; NEVER create manufacturer-specific SEO phrases; follow Etsy title rules above):
-${titleTemplates || `(none — e.g. Custom Car Shirt From Your Photo, Custom Photo T-Shirt, Car Guy Gift)`}
+${titleTemplates || `(none — e.g. Custom Car Shirt, JDM Shirt, Custom Photo T-Shirt, Car Guy Gift)`}
 
-Niche tags only (tags field): return 3 niche-specific tags for "${input.subject}" (≤${TAG_MAX_CHARS} chars each; optional 4th backup OK). The system appends these evergreen tags automatically — do not include them: ${EVERGREEN_TAGS.join(", ")}
+Niche tags only (tags field): return 3 short niche-specific tags for "${input.subject}" (complete 2–3 word phrases ≤${TAG_MAX_CHARS} chars each; optional 4th backup OK). Never long-tail phrases that won't fit (no "from your photo" in tags). The system appends these evergreen tags automatically — do not include them: ${EVERGREEN_TAGS.join(", ")}
 
 Description structure (description field only — NO prices anywhere in description). Keep it easy to read: short opening, then bullets under each heading. No walls of text, no ALL CAPS. One emoji on each section header only.
 1) One short keyword-first opening paragraph (concept niche + product + gift intent) — first 160 chars matter most; NO emoji. Weave niche tags + evergreen SEO phrases as exact wording naturally (custom car shirt, personalized gift, gift for him, etc.) — readable sentences, not a keyword dump.
@@ -292,7 +293,7 @@ Description structure (description field only — NO prices anywhere in descript
 4) 👕 Front or back artwork — bullets: front OR back (choose at checkout); contact shop for both sides. Do NOT say both sides are included by default
 5) ✨ Details — bullets for product, style, colors, sizes
 6) 🌆 Backgrounds — short bullets (no prices): ${backgroundMarketing}
-7) 📸 Personalization — bullets: up to 4 vehicle photos; optional custom text
+7) 📸 Personalization — bullets: 1 vehicle photo; optional custom text
 8) 🧺 Materials & care — short bullets
 9) 💬 Questions? — one short sentence inviting messages (multiple cars, people/pets, etc.)
 10) 🏪 Explore the shop — one short sentence + soft CTA

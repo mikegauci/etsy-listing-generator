@@ -147,7 +147,7 @@ export const COMMUNITY_LISTINGS: ChecklistCategory[] = [
     seoBrief: {
       lead: "Custom Photo Shirt",
       niche: ["Custom Photo T-Shirt", "Custom Car Shirt"],
-      support: ["Personalized Car T-Shirt", "Car Guy Gift"],
+      support: ["Personalized T-Shirt", "Car Guy Gift"],
       photoPrimary: true,
     },
   },
@@ -257,9 +257,9 @@ export const TARGETED_LISTINGS: ChecklistCategory[] = [
       lead: "Car Guy Gift",
       niche: ["Car Guy Gift"],
       support: [
-        "Custom Car Shirt From Your Photo",
+        "Custom Car Shirt",
         "Custom Photo Shirt",
-        "Personalized Car T-Shirt",
+        "Personalized T-Shirt",
       ],
       giftPrimary: true,
     },

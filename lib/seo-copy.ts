@@ -62,7 +62,7 @@ const SLOT_VISUALS: Record<string, SlotVisualFn> = {
   "Backgrounds Grid": (s, p) =>
     `Grid of theme background options behind a ${s} ${p} design preview`,
   "How to Order": (s, p) =>
-    `How-to-order steps for personalizing a ${s} ${p} from your vehicle photos`,
+    `How-to-order steps for personalizing a ${s} ${p} from your vehicle photo`,
   "No Background": (s, p) =>
     `Clean no-background ${s} illustration on a ${p} for a minimal custom look`,
   "Custom Background": (s, p) =>

@@ -75,6 +75,11 @@ function contentTokens(text: string): string[] {
     .filter((w) => w.length >= 2 && !NICHE_GENERIC_WORDS.has(w));
 }
 
+/** Niche tokens excluding ultra-generic "car" — used to prefer real niche tags. */
+function distinctiveNicheTokens(subjectNiche: string): string[] {
+  return contentTokens(subjectNiche).filter((t) => t !== "car" && t !== "cars");
+}
+
 /** True when the tag shares a real niche token with the subject (not just "shirt"/"gift"). */
 export function tagMatchesSubjectNiche(
   tag: string,
@@ -83,6 +88,22 @@ export function tagMatchesSubjectNiche(
   const subjectTokens = new Set(contentTokens(subjectNiche));
   if (subjectTokens.size === 0) return true;
   return contentTokens(tag).some((t) => subjectTokens.has(t));
+}
+
+/**
+ * When the subject has a distinctive niche (jdm, racing, truck, …),
+ * require the tag to include that niche — not only generic "car".
+ */
+export function tagMatchesDistinctiveNiche(
+  tag: string,
+  subjectNiche: string
+): boolean {
+  const distinctive = distinctiveNicheTokens(subjectNiche);
+  if (distinctive.length === 0) {
+    return tagMatchesSubjectNiche(tag, subjectNiche);
+  }
+  const tagTokens = new Set(contentTokens(tag));
+  return distinctive.some((t) => tagTokens.has(t));
 }
 
 /**
@@ -127,6 +148,13 @@ const TAG_TRAILING_STOP = new Set([
   "with",
   "in",
   "on",
+  "from",
+  "your",
+  "my",
+  "our",
+  "by",
+  "as",
+  "into",
 ]);
 
 /** Drop trailing prepositions/articles so tags stay complete phrases. */
@@ -139,6 +167,81 @@ export function stripDanglingTagWords(tag: string): string {
     words.pop();
   }
   return words.join(" ");
+}
+
+/**
+ * True when a tag is a complete short phrase that fits Etsy without truncation junk.
+ * Rejects long-tails like "car shirt from your photo" that clamp to "car shirt from your".
+ */
+export function isCompleteEtsyTag(tag: string, max = TAG_MAX_CHARS): boolean {
+  const t = stripDanglingTagWords(tag.replace(/\s+/g, " ").trim());
+  if (!t || t.length > max) return false;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 4) return false;
+  if (TAG_TRAILING_STOP.has(words[words.length - 1].toLowerCase())) return false;
+  // Long-tail photo/customize trails are evergreen territory, not niche tags.
+  const lower = t.toLowerCase();
+  if (/\bfrom your\b/.test(lower)) return false;
+  if (/\byour (car |photo|picture)\b/.test(lower)) return false;
+  return true;
+}
+
+/**
+ * Prefer short 2–3 word seeds that already fit ≤20 chars.
+ * For longer title segments, keep only compact prefixes that remain complete tags.
+ */
+function shortTagSeeds(phrase: string, max = TAG_MAX_CHARS): string[] {
+  const cleaned = stripDanglingTagWords(phrase.replace(/\s+/g, " ").trim());
+  if (!cleaned) return [];
+
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  const out: string[] = [];
+  const seen = new Set<string>();
+
+  const push = (raw: string) => {
+    const tag = stripDanglingTagWords(raw);
+    if (!isCompleteEtsyTag(tag, max)) return;
+    const key = normalizeTagKey(tag);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(tag);
+  };
+
+  // Whole phrase only when it already fits — never clamp mid long-tail into niche tags.
+  if (cleaned.length <= max) push(cleaned);
+
+  // Compact 2–3 word windows from the start (and 2-word pairs).
+  for (let n = Math.min(3, words.length); n >= 2; n--) {
+    push(words.slice(0, n).join(" "));
+  }
+  for (let i = 0; i + 1 < words.length && i < 3; i++) {
+    push(words.slice(i, i + 2).join(" "));
+  }
+
+  return out;
+}
+
+const TAG_PRODUCT_OR_GIFT = new Set([
+  "shirt",
+  "shirts",
+  "tee",
+  "tees",
+  "tshirt",
+  "tshirts",
+  "t-shirt",
+  "t-shirts",
+  "hoodie",
+  "hoodies",
+  "sweatshirt",
+  "gift",
+  "gifts",
+]);
+
+function hasProductOrGiftWord(tag: string): boolean {
+  return tag
+    .toLowerCase()
+    .split(/\s+/)
+    .some((w) => TAG_PRODUCT_OR_GIFT.has(w));
 }
 
 function normalizeTagKey(value: string): string {
@@ -155,8 +258,7 @@ export function isEvergreenTag(tag: string): boolean {
 
 /**
  * Build niche-specific tag candidates from subject / title / trends.
- * Prefers 2–3 word phrases ≤20 chars. Title segments come first so
- * important title keywords land in the niche slots.
+ * Prefers complete 2–3 word phrases ≤20 chars. Never invents truncated long-tails.
  */
 export function nicheTagCandidates(opts: {
   subject: string;
@@ -174,8 +276,12 @@ export function nicheTagCandidates(opts: {
     opts.subject.trim();
 
   const nicheWords = niche.split(/\s+/).filter(Boolean);
-  const short = nicheWords.slice(0, 2).join(" ") || niche;
   const first = nicheWords[0] || "car";
+  const short = nicheWords.slice(0, 2).join(" ") || niche;
+  const shortBase =
+    short
+      .replace(/\s+(t-?shirts?|tees?|shirts?|hoodies?|gifts?)$/i, "")
+      .trim() || first;
 
   const fromTitle = (opts.title || "")
     .split(",")
@@ -187,45 +293,52 @@ export function nicheTagCandidates(opts: {
     // Only keep clean title segments — skip gift/recipient keyword dumps.
     .filter((seg) => seg && !isRecipientKeywordDump(seg));
 
-  // Prefer the lead niche/product segment; skip generic photo/gift trails as niche tags
-  // (those are already covered by evergreen tags).
-  const leadTitle = fromTitle[0] ? [fromTitle[0]] : [];
+  // Expand title segments into short complete seeds (skip long-tail photo trails).
+  const fromTitleShort = fromTitle.flatMap((seg) => shortTagSeeds(seg));
 
   const seeds = [
-    ...leadTitle,
+    ...fromTitleShort,
     ...(opts.trending || []),
     ...(opts.extra || []),
-    `${short} shirt`,
-    `${short} gift`,
+    `${shortBase} shirt`,
+    `${shortBase} gift`,
     `${first} car gift`,
-    `${short} tee`,
+    `${first} shirt`,
+    `${shortBase} tee`,
   ];
 
   const out: string[] = [];
   const seen = new Set<string>();
   for (const raw of seeds) {
-    const tag = clampEtsyTag(raw).toLowerCase();
-    if (!tag || !isMultiWord(tag)) continue;
-    if (isEvergreenTag(tag)) continue;
-    if (isRecipientKeywordDump(tag)) continue;
-    // Drop off-niche junk / typos (e.g. "personalized cat" when subject is car/Hellcat).
-    if (!tagMatchesSubjectNiche(tag, niche)) continue;
-    {
-      const words = tag.split(/\s+/);
-      const colorFocused =
-        isColorOnlyPhrase(tag) ||
-        (words.some((w) => containsGarmentColor(w)) &&
-          words.every(
-            (w) =>
-              containsGarmentColor(w) ||
-              ["tee", "shirt", "tshirt", "t-shirt", "or", "and"].includes(w)
-          ));
-      if (colorFocused) continue;
+    // Only accept phrases that already fit as complete tags — no word-drop clamp for niche.
+    for (const candidate of shortTagSeeds(raw)) {
+      const tag = candidate.toLowerCase();
+      if (!tag || !isMultiWord(tag)) continue;
+      if (!isCompleteEtsyTag(tag)) continue;
+      if (isEvergreenTag(tag)) continue;
+      if (isRecipientKeywordDump(tag)) continue;
+      // Drop off-niche junk / typos (e.g. "personalized cat" when subject is car/Hellcat).
+      if (!tagMatchesSubjectNiche(tag, niche)) continue;
+      // Prefer real niche (jdm/racing/…) over generic "car shirt" when subject has one.
+      if (!tagMatchesDistinctiveNiche(tag, niche)) continue;
+      if (!hasProductOrGiftWord(tag)) continue;
+      {
+        const words = tag.split(/\s+/);
+        const colorFocused =
+          isColorOnlyPhrase(tag) ||
+          (words.some((w) => containsGarmentColor(w)) &&
+            words.every(
+              (w) =>
+                containsGarmentColor(w) ||
+                ["tee", "shirt", "tshirt", "t-shirt", "or", "and"].includes(w)
+            ));
+        if (colorFocused) continue;
+      }
+      const key = normalizeTagKey(tag);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(tag);
     }
-    const key = normalizeTagKey(tag);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(tag);
   }
   return out;
 }
@@ -271,13 +384,20 @@ export function buildListingTags(
 
   const push = (raw: string) => {
     if (out.length >= count) return false;
-    const tag = clampEtsyTag(raw).toLowerCase();
-    if (!tag || tag.length < 2) return false;
-    const key = normalizeTagKey(tag);
-    if (outSeen.has(key)) return false;
-    outSeen.add(key);
-    out.push(tag);
-    return true;
+    // Niche/extra: only complete short phrases. Evergreen already fits ≤20.
+    const candidates = isEvergreenTag(raw)
+      ? [clampEtsyTag(raw).toLowerCase()].filter(Boolean)
+      : shortTagSeeds(raw).map((t) => t.toLowerCase());
+    for (const tag of candidates) {
+      if (!tag || tag.length < 2) continue;
+      if (!isEvergreenTag(tag) && !isCompleteEtsyTag(tag)) continue;
+      const key = normalizeTagKey(tag);
+      if (outSeen.has(key)) continue;
+      outSeen.add(key);
+      out.push(tag);
+      return true;
+    }
+    return false;
   };
 
   // 1) Niche first (3) so all 10 evergreen still fit

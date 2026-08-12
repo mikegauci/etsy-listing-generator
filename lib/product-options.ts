@@ -99,10 +99,10 @@ export const TSHIRT_SIZES = [
 
 export const CUSTOM_FIELDS: CustomFieldDef[] = [
   {
-    name: "Upload car photo/s",
+    name: "Upload car photo",
     type: "file",
     optional: true,
-    maxFiles: 4,
+    maxFiles: 1,
   },
   {
     name: "Add text to your artwork",
@@ -174,7 +174,7 @@ export function formatBackgroundMarketingCopy(backgroundIds: string[]): string {
 export function formatCustomFieldsNotes(): string {
   return CUSTOM_FIELDS.map((f) => {
     if (f.type === "file") {
-      return `${f.name}: optional file upload (up to ${f.maxFiles || 1} files)`;
+      return `${f.name}: optional file upload (1 photo)`;
     }
     const extra = f.extraUsd != null ? ` (+$${f.extraUsd.toFixed(2)})` : "";
     return `${f.name}: optional text box${extra}`;

@@ -90,7 +90,8 @@ function isTitleFillerWord(word: string): boolean {
 
 /**
  * Remove description-only filler from titles (front/back print language,
- * apparel/illustration/vehicle/owners/guy padding). Keeps product + gift phrasing.
+ * apparel/illustration/vehicle/owners padding). Keeps product + gift phrasing.
+ * Also strips long-tail "from your photo" trails that waste title budget.
  */
 export function stripTitleFiller(title: string): string {
   let t = title.replace(/\s+/g, " ").trim();
@@ -99,12 +100,27 @@ export function stripTitleFiller(title: string): string {
   t = t.replace(/\bfront\s*(?:&|and|\/)\s*back\b/gi, " ");
   t = t.replace(/\bfront\s+back\b/gi, " ");
 
+  // Long-tail personalization trails — photo intent belongs in "Custom Photo Shirt".
+  t = t.replace(/\bfrom\s+your\s+(?:car\s+)?(?:photo|picture|image)s?\b/gi, " ");
+  t = t.replace(/\bfrom\s+your\s+photo\b/gi, " ");
+
   const parts = t
     .split(",")
     .map((p) => p.trim())
     .filter(Boolean)
     .map((part) => {
-      const words = part.split(/\s+/).filter(Boolean);
+      // Collapse leftover double spaces from long-tail stripping.
+      let cleaned = part.replace(/\s+/g, " ").trim();
+      // Prefer short product phrases over "Personalized Car Photo Shirt".
+      cleaned = cleaned.replace(
+        /\bpersonalized\s+car\s+photo\s+(t-?shirts?|shirts?|tees?)\b/gi,
+        "Personalized $1"
+      );
+      cleaned = cleaned.replace(
+        /\bpersonalized\s+car\s+photo\b/gi,
+        "Custom Photo Shirt"
+      );
+      const words = cleaned.split(/\s+/).filter(Boolean);
       const hadFiller = words.some((w) => isTitleFillerWord(w));
       const cleanedWords = words.filter((w) => !isTitleFillerWord(w));
       // Drop segments that were mostly description fluff.
@@ -169,7 +185,6 @@ function titleExtraPhrases(productType?: string): string[] {
   const label = productTitleLabel(productType);
   return [
     `Custom Photo ${label}`,
-    `Personalized Car Photo ${label}`,
     "Car Guy Gift",
     "Gift for Him",
   ];

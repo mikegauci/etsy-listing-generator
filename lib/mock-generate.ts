@@ -89,11 +89,7 @@ export function generateMockListing(
     ].join(", ");
   } else if (seoBrief) {
     const nicheBit = seoBrief.niche[0];
-    const parts = [
-      seoBrief.photoPrimary
-        ? `${seoBrief.lead} From Your Car Photo`
-        : `${seoBrief.lead} From Your Photo`,
-    ];
+    const parts = [seoBrief.lead];
     if (nicheBit && !parts[0].toLowerCase().includes(nicheBit.toLowerCase())) {
       parts.push(nicheBit.includes("Shirt") ? nicheBit : `${nicheBit} Shirt`);
     }
