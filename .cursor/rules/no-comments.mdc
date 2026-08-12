@@ -1,0 +1,23 @@
+---
+description: Do not add code comments unless explicitly requested
+alwaysApply: true
+---
+
+# No Comments
+
+Do not add comments to code you write or edit.
+
+- No explanatory comments, section headers, or narrating what the next line does
+- No JSDoc/TSDoc on obvious functions, props, or types
+- Prefer clear names and structure over comments
+- Leave existing comments alone unless asked to change or remove them
+- Only add a comment when the user explicitly asks for one, or when a non-obvious constraint/workaround cannot be expressed in code
+
+```typescript
+// ❌ BAD
+// Format the title for Etsy
+const title = formatListingTitle(input);
+
+// ✅ GOOD
+const title = formatListingTitle(input);
+```
