@@ -7,7 +7,8 @@ export const maxDuration = 120;
 
 async function fetchAllExistingListingIds(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any
+  supabase: any,
+  shopId: string
 ): Promise<{ etsy_listing_id: number; state: string }[]> {
   const pageSize = 1000;
   const all: { etsy_listing_id: number; state: string }[] = [];
@@ -17,6 +18,7 @@ async function fetchAllExistingListingIds(
     const { data, error } = await supabase
       .from("shop_listings")
       .select("etsy_listing_id, state")
+      .eq("shop_id", shopId)
       .range(from, from + pageSize - 1);
 
     if (error) {
@@ -38,14 +40,14 @@ export async function POST() {
       return apiError(500, "Supabase is not configured");
     }
 
+    const shopId = "motor-element";
     const listings = await fetchAllShopListings();
     const rows = listings.map(mapEtsyListingToRow);
     const supabase = getSupabaseAdmin();
     const activeIds = rows.map((r) => r.etsy_listing_id);
 
-    // Refuse to wipe the catalog if Etsy returned nothing but we still have rows.
     if (activeIds.length === 0) {
-      const existing = await fetchAllExistingListingIds(supabase);
+      const existing = await fetchAllExistingListingIds(supabase, shopId);
       if (existing.length > 0) {
         return apiError(
           502,
@@ -67,7 +69,7 @@ export async function POST() {
       const chunk = rows.slice(i, i + chunkSize);
       const { error } = await supabase
         .from("shop_listings")
-        .upsert(chunk, { onConflict: "etsy_listing_id" });
+        .upsert(chunk, { onConflict: "shop_id,etsy_listing_id" });
       if (error) {
         throw new Error(`Upsert failed: ${error.message}`);
       }
@@ -75,7 +77,7 @@ export async function POST() {
     }
 
     // Remove non-active / stale listings (paginated so shops >1000 are safe)
-    const existing = await fetchAllExistingListingIds(supabase);
+    const existing = await fetchAllExistingListingIds(supabase, shopId);
     const activeIdSet = new Set(activeIds);
     const staleIds = existing
       .filter(
@@ -92,6 +94,7 @@ export async function POST() {
         const { error: deleteError } = await supabase
           .from("shop_listings")
           .delete()
+          .eq("shop_id", shopId)
           .in("etsy_listing_id", chunk);
         if (deleteError) {
           throw new Error(

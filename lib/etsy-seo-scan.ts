@@ -28,7 +28,11 @@ function buildSeedQueries(subject: string, productType: string): string[] {
   return Array.from(new Set(seeds.map((s) => s.replace(/\s+/g, " ").trim())));
 }
 
-function isRelevantSuggestion(suggestion: string, subject: string): boolean {
+function isRelevantSuggestion(
+  suggestion: string,
+  subject: string,
+  productIntent: RegExp
+): boolean {
   const normalized = normalizeKeyword(suggestion);
   if (!normalized || normalized.length < 3) return false;
   if (!normalized.includes("etsy")) return false;
@@ -40,10 +44,7 @@ function isRelevantSuggestion(suggestion: string, subject: string): boolean {
 
   const withoutEtsy = stripEtsyPrefix(normalized);
   const hasSubjectWord = subjectWords.some((word) => withoutEtsy.includes(word));
-  const hasProductIntent =
-    /(shirt|tee|t-shirt|hoodie|gift|custom|car|apparel|art|print|merch)/i.test(
-      withoutEtsy
-    );
+  const hasProductIntent = productIntent.test(withoutEtsy);
 
   return hasSubjectWord || hasProductIntent;
 }
@@ -79,7 +80,8 @@ async function fetchGoogleSuggestions(seed: string): Promise<string[]> {
  */
 export async function scanEtsyKeywords(
   subject: string,
-  productType: string
+  productType: string,
+  productIntent: RegExp = /(shirt|tee|t-shirt|hoodie|gift|custom|car|apparel|art|print|merch)/i
 ): Promise<string[]> {
   const seeds = buildSeedQueries(subject, productType);
   const ranked = new Map<string, { phrase: string; score: number }>();
@@ -98,7 +100,7 @@ export async function scanEtsyKeywords(
     }
     const { i, suggestions } = result.value;
     suggestions.forEach((suggestion, index) => {
-      if (!isRelevantSuggestion(suggestion, subject)) return;
+      if (!isRelevantSuggestion(suggestion, subject, productIntent)) return;
 
       const phrase = stripEtsyPrefix(suggestion);
       if (!phrase) return;

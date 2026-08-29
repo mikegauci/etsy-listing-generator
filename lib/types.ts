@@ -3,10 +3,10 @@ import {
   ALWAYS_SELECTED_BACKGROUND_IDS,
   BACKGROUND_OPTIONS,
   MAX_BACKGROUNDS,
-  MEDIA_SLOTS,
   LISTING_THEME_BACKGROUND_COUNT,
   backgroundIdsForThemeCount,
 } from "./product-options";
+import { getShop, normalizeShopId } from "./shops";
 
 export const PRODUCT_TYPES = [
   "t-shirt",
@@ -22,6 +22,14 @@ export const PRODUCT_TYPES = [
   "tote bag",
 ] as const;
 
+export const LOOM_PRODUCT_TYPES = [
+  "personalized baby blanket",
+  "baby blanket",
+  "swaddle blanket",
+  "nursery blanket",
+  "milestone blanket",
+] as const;
+
 export const mediaFileSchema = z.object({
   name: z.string().min(1).max(300),
   kind: z.enum(["image", "video"]),
@@ -33,31 +41,46 @@ const validBackgroundIds = new Set(BACKGROUND_OPTIONS.map((b) => b.id));
 
 export const generateInputSchema = z
   .object({
+    shopId: z.string().optional().default("motor-element"),
     subject: z.string().min(1).max(200),
     productType: z.string().min(1).max(100),
-    /** Catalog defaults — not collected in UI */
-    style: z
-      .string()
-      .min(1)
-      .max(200)
-      .optional()
-      .default("Custom car illustration"),
-    audience: z.string().min(1).max(200).optional().default("Car guy gift"),
+    style: z.string().min(1).max(200).optional(),
+    audience: z.string().min(1).max(200).optional(),
     colors: z.string().max(200).optional().default(""),
     price: z.number().positive().max(10000).optional().nullable(),
     optionsNotes: z.string().max(1000).optional().default(""),
     mediaFiles: z.array(mediaFileSchema).max(20).optional().default([]),
-    backgroundIds: z
-      .array(z.string())
-      .min(2)
-      .max(MAX_BACKGROUNDS)
-      .optional()
-      .default(backgroundIdsForThemeCount(LISTING_THEME_BACKGROUND_COUNT)),
-    /** @deprecated use mediaFiles */
+    backgroundIds: z.array(z.string()).optional().default([]),
     imageName: z.string().max(300).optional().nullable(),
   })
   .superRefine((data, ctx) => {
-    const ids = data.backgroundIds || [];
+    const shop = getShop(data.shopId);
+    if (!data.style) {
+      data.style = shop.defaults.style;
+    }
+    if (!data.audience) {
+      data.audience = shop.defaults.audience;
+    }
+    if (!data.colors) {
+      data.colors = shop.defaults.colors;
+    }
+
+    if (shop.id !== "motor-element") {
+      if (!shop.productTypes.includes(data.productType)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Unknown product type for ${shop.name}`,
+          path: ["productType"],
+        });
+      }
+      return;
+    }
+
+    const ids =
+      data.backgroundIds?.length
+        ? data.backgroundIds
+        : backgroundIdsForThemeCount(LISTING_THEME_BACKGROUND_COUNT);
+
     for (const id of ALWAYS_SELECTED_BACKGROUND_IDS) {
       if (!ids.includes(id)) {
         ctx.addIssue({
@@ -83,6 +106,23 @@ export const generateInputSchema = z
         path: ["backgroundIds"],
       });
     }
+  })
+  .transform((data) => {
+    const shopId = normalizeShopId(data.shopId);
+    const shop = getShop(shopId);
+    return {
+      ...data,
+      shopId,
+      style: data.style ?? shop.defaults.style,
+      audience: data.audience ?? shop.defaults.audience,
+      colors: data.colors || shop.defaults.colors,
+      backgroundIds:
+        shop.id === "motor-element"
+          ? data.backgroundIds?.length
+            ? data.backgroundIds
+            : shop.getDefaultBackgroundIds()
+          : [],
+    };
   });
 
 export type GenerateInput = z.infer<typeof generateInputSchema>;
@@ -95,17 +135,21 @@ export const mediaAltTextSchema = z.object({
 export type MediaAltText = z.infer<typeof mediaAltTextSchema>;
 
 /** Raw model response before tag packing / title finalize. */
-export const openaiListingSchema = z.object({
-  title: z.string(),
-  tags: z.array(z.string()).min(1).max(4),
-  description: z.string(),
-  altText: z.string(),
-  mediaAltTexts: z.array(mediaAltTextSchema).min(1).max(MEDIA_SLOTS.length),
-  seoNotes: z.string(),
-  referencedListings: z.array(z.string()),
-  suggestedPrice: z.string(),
-  optionsNotes: z.string(),
-});
+export function createOpenAiListingSchema(maxSlots: number) {
+  return z.object({
+    title: z.string(),
+    tags: z.array(z.string()).min(1).max(4),
+    description: z.string(),
+    altText: z.string(),
+    mediaAltTexts: z.array(mediaAltTextSchema).min(1).max(maxSlots),
+    seoNotes: z.string(),
+    referencedListings: z.array(z.string()),
+    suggestedPrice: z.string(),
+    optionsNotes: z.string(),
+  });
+}
+
+export const openaiListingSchema = createOpenAiListingSchema(17);
 
 export type OpenAIListingRaw = z.infer<typeof openaiListingSchema>;
 
@@ -160,6 +204,7 @@ export type GeneratedListingRow = {
   referenced_listing_ids: string[];
   is_mock: boolean;
   created_at: string;
+  shop_id?: string | null;
   suggested_price?: string | null;
 };
 

@@ -3,17 +3,25 @@ import { z } from "zod";
 import { getSupabaseAdmin, hasSupabaseConfig } from "@/lib/supabase";
 import { normalizeChecklistCategoryIds } from "@/lib/title-checklist";
 import { apiError } from "@/lib/api";
+import { getShop, normalizeShopId } from "@/lib/shops";
 
 export const dynamic = "force-dynamic";
 
 const putSchema = z.object({
+  shopId: z.string().optional(),
   doneCategories: z.array(z.string().min(1).max(100)).max(100),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const shopId = normalizeShopId(url.searchParams.get("shopId"));
+    const shop = getShop(shopId);
+    const validIds = new Set(shop.checklistCategories.map((c) => c.id));
+
     if (!hasSupabaseConfig()) {
       return NextResponse.json({
+        shopId: shop.id,
         doneCategories: [],
         warning: "Supabase is not configured",
       });
@@ -23,7 +31,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("title_checklist")
       .select("done_categories, updated_at")
-      .eq("id", 1)
+      .eq("shop_id", shop.id)
       .maybeSingle();
 
     if (error) {
@@ -36,8 +44,13 @@ export async function GET() {
         )
       : [];
 
+    const doneCategories = normalizeChecklistCategoryIds(raw).filter((id) =>
+      validIds.has(id)
+    );
+
     return NextResponse.json({
-      doneCategories: normalizeChecklistCategoryIds(raw),
+      shopId: shop.id,
+      doneCategories,
       updatedAt: data?.updated_at ?? null,
     });
   } catch (err) {
@@ -60,19 +73,22 @@ export async function PUT(request: Request) {
       );
     }
 
+    const shop = getShop(parsed.data.shopId);
+    const validIds = new Set(shop.checklistCategories.map((c) => c.id));
     const doneCategories = normalizeChecklistCategoryIds(
       parsed.data.doneCategories
-    );
+    ).filter((id) => validIds.has(id));
+
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("title_checklist")
       .upsert(
         {
-          id: 1,
+          shop_id: shop.id,
           done_categories: doneCategories,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "id" }
+        { onConflict: "shop_id" }
       )
       .select("done_categories, updated_at")
       .single();
@@ -82,9 +98,10 @@ export async function PUT(request: Request) {
     }
 
     return NextResponse.json({
+      shopId: shop.id,
       doneCategories: normalizeChecklistCategoryIds(
         Array.isArray(data.done_categories) ? data.done_categories : []
-      ),
+      ).filter((id) => validIds.has(id)),
       updatedAt: data.updated_at ?? null,
     });
   } catch (err) {

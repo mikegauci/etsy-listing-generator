@@ -749,6 +749,7 @@ export function mapEtsyListingToRow(listing: EtsyListing) {
   const { amount, currency } = etsyListingPrice(listing);
 
   return {
+    shop_id: "motor-element",
     etsy_listing_id: listing.listing_id,
     title: listing.title || "",
     tags: listing.tags || [],

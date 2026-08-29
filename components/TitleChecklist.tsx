@@ -3,14 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ALL_CHECKLIST_CATEGORIES,
-  COMMUNITY_LISTINGS,
   EMPTY_CHECKLIST_STATE,
-  TARGETED_LISTINGS,
   googleImagesUrl,
   type ChecklistCategory,
   type ChecklistState,
 } from "@/lib/title-checklist";
+import { getShop } from "@/lib/shops";
+import { useActiveShopId } from "./ShopSwitcher";
 import { ErrorBanner } from "./ui";
 
 type Filter = "all" | "todo" | "done";
@@ -165,6 +164,12 @@ function Section({
 }
 
 export function TitleChecklist() {
+  const shopId = useActiveShopId();
+  const shop = getShop(shopId);
+  const allCategories = shop.checklistCategories;
+  const communityListings = allCategories.filter((c) => c.kind === "community");
+  const targetedListings = allCategories.filter((c) => c.kind === "targeted");
+  const isLoom = shop.id === "little-and-loom";
   const [state, setState] = useState<ChecklistState>(EMPTY_CHECKLIST_STATE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -181,7 +186,10 @@ export function TitleChecklist() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/titles-checklist", { cache: "no-store" });
+      const res = await fetch(
+        `/api/titles-checklist?shopId=${encodeURIComponent(shopId)}`,
+        { cache: "no-store" }
+      );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to load");
       setState({
@@ -194,7 +202,7 @@ export function TitleChecklist() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [shopId]);
 
   useEffect(() => {
     load();
@@ -202,10 +210,8 @@ export function TitleChecklist() {
 
   const totalDone = useMemo(
     () =>
-      ALL_CHECKLIST_CATEGORIES.filter((c) =>
-        state.doneCategories.includes(c.id)
-      ).length,
-    [state.doneCategories]
+      allCategories.filter((c) => state.doneCategories.includes(c.id)).length,
+    [allCategories, state.doneCategories]
   );
 
   function toggleCategory(id: string) {
@@ -229,7 +235,10 @@ export function TitleChecklist() {
         const res = await fetch("/api/titles-checklist", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ doneCategories: payload.doneCategories }),
+          body: JSON.stringify({
+            shopId,
+            doneCategories: payload.doneCategories,
+          }),
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Failed to save");
@@ -245,9 +254,10 @@ export function TitleChecklist() {
         setError(err instanceof Error ? err.message : "Failed to save");
         // Re-load server state instead of rolling back to a stale local snapshot.
         try {
-          const res = await fetch("/api/titles-checklist", {
-            cache: "no-store",
-          });
+          const res = await fetch(
+            `/api/titles-checklist?shopId=${encodeURIComponent(shopId)}`,
+            { cache: "no-store" }
+          );
           const json = await res.json();
           if (res.ok) {
             const restored: ChecklistState = {
@@ -283,9 +293,9 @@ export function TitleChecklist() {
         <div>
           <h1 className="text-xl font-semibold text-zinc-100">Titles</h1>
           <p className="mt-1 max-w-xl text-sm text-zinc-500">
-            Checklist of listing concepts to create. Each concept uses 9 vehicle
-            mockup references so listings feel distinct while targeting broader
-            search intents.
+            {isLoom
+              ? "Checklist of nursery blanket concepts to create. Each concept uses 9 artwork motif references for distinct listings."
+              : "Checklist of listing concepts to create. Each concept uses 9 vehicle mockup references so listings feel distinct while targeting broader search intents."}
           </p>
         </div>
         <div className="flex gap-1 rounded border border-zinc-800 p-0.5">
@@ -306,10 +316,7 @@ export function TitleChecklist() {
         </div>
       </div>
 
-      <ProgressBar
-        done={totalDone}
-        total={ALL_CHECKLIST_CATEGORIES.length}
-      />
+      <ProgressBar done={totalDone} total={allCategories.length} />
 
       {error && <ErrorBanner message={error} />}
 
@@ -319,8 +326,12 @@ export function TitleChecklist() {
         <>
           <Section
             title="Community listings"
-            hint="Use 9 different vehicle mockups — click for Google Images"
-            categories={COMMUNITY_LISTINGS}
+            hint={
+              isLoom
+                ? "Use 9 different artwork motifs — click for Google Images"
+                : "Use 9 different vehicle mockups — click for Google Images"
+            }
+            categories={communityListings}
             state={state}
             filter={filter}
             saving={saving}
@@ -328,8 +339,12 @@ export function TitleChecklist() {
           />
           <Section
             title="Targeted listings"
-            hint="Use 9 different vehicle mockups for each search intent — click for Google Images"
-            categories={TARGETED_LISTINGS}
+            hint={
+              isLoom
+                ? "Use 9 different artwork motifs for each search intent"
+                : "Use 9 different vehicle mockups for each search intent — click for Google Images"
+            }
+            categories={targetedListings}
             state={state}
             filter={filter}
             saving={saving}

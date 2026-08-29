@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, hasSupabaseConfig } from "@/lib/supabase";
 import { apiError } from "@/lib/api";
+import { normalizeShopId } from "@/lib/shops";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     if (!hasSupabaseConfig()) {
       return NextResponse.json({
@@ -13,10 +14,14 @@ export async function GET() {
       });
     }
 
+    const url = new URL(request.url);
+    const shopId = normalizeShopId(url.searchParams.get("shopId"));
+
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("generated_listings")
       .select("*")
+      .eq("shop_id", shopId)
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -24,7 +29,7 @@ export async function GET() {
       return apiError(500, "Failed to load history", error);
     }
 
-    return NextResponse.json({ listings: data || [] });
+    return NextResponse.json({ listings: data || [], shopId });
   } catch (err) {
     return apiError(500, "Failed to load history", err);
   }

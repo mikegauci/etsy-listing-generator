@@ -66,44 +66,57 @@ const NICHE_GENERIC_WORDS = new Set([
   "guys",
 ]);
 
-function contentTokens(text: string): string[] {
+function contentTokens(
+  text: string,
+  genericWords: ReadonlySet<string> = NICHE_GENERIC_WORDS
+): string[] {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
     .map((w) => w.trim())
-    .filter((w) => w.length >= 2 && !NICHE_GENERIC_WORDS.has(w));
+    .filter((w) => w.length >= 2 && !genericWords.has(w));
 }
 
-/** Niche tokens excluding ultra-generic "car" — used to prefer real niche tags. */
-function distinctiveNicheTokens(subjectNiche: string): string[] {
-  return contentTokens(subjectNiche).filter((t) => t !== "car" && t !== "cars");
-}
-
-/** True when the tag shares a real niche token with the subject (not just "shirt"/"gift"). */
 export function tagMatchesSubjectNiche(
   tag: string,
-  subjectNiche: string
+  subjectNiche: string,
+  nicheGenericWords?: ReadonlySet<string>
 ): boolean {
-  const subjectTokens = new Set(contentTokens(subjectNiche));
+  const subjectTokens = new Set(
+    contentTokens(subjectNiche, nicheGenericWords ?? NICHE_GENERIC_WORDS)
+  );
   if (subjectTokens.size === 0) return true;
-  return contentTokens(tag).some((t) => subjectTokens.has(t));
+  return contentTokens(tag, nicheGenericWords ?? NICHE_GENERIC_WORDS).some((t) =>
+    subjectTokens.has(t)
+  );
 }
 
-/**
- * When the subject has a distinctive niche (jdm, racing, truck, …),
- * require the tag to include that niche — not only generic "car".
- */
 export function tagMatchesDistinctiveNiche(
   tag: string,
-  subjectNiche: string
+  subjectNiche: string,
+  nicheGenericWords?: ReadonlySet<string>
 ): boolean {
-  const distinctive = distinctiveNicheTokens(subjectNiche);
+  const distinctive = distinctiveNicheTokens(
+    subjectNiche,
+    nicheGenericWords
+  );
   if (distinctive.length === 0) {
-    return tagMatchesSubjectNiche(tag, subjectNiche);
+    return tagMatchesSubjectNiche(tag, subjectNiche, nicheGenericWords);
   }
-  const tagTokens = new Set(contentTokens(tag));
+  const tagTokens = new Set(
+    contentTokens(tag, nicheGenericWords ?? NICHE_GENERIC_WORDS)
+  );
   return distinctive.some((t) => tagTokens.has(t));
+}
+
+function distinctiveNicheTokens(
+  subjectNiche: string,
+  nicheGenericWords?: ReadonlySet<string>
+): string[] {
+  return contentTokens(subjectNiche, nicheGenericWords ?? NICHE_GENERIC_WORDS).filter(
+    (t) => t !== "car" && t !== "cars"
+  );
 }
 
 /**
@@ -266,6 +279,7 @@ export function nicheTagCandidates(opts: {
   niche?: string;
   trending?: string[];
   extra?: string[];
+  nicheGenericWords?: ReadonlySet<string>;
 }): string[] {
   const niche =
     (opts.niche || "").trim() ||
@@ -358,6 +372,8 @@ export function buildListingTags(
         trending?: string[];
         candidates?: string[];
         count?: number;
+        evergreenTags?: readonly string[];
+        nicheGenericWords?: ReadonlySet<string>;
       }
 ): string[] {
   // Back-compat: buildListingTags(["ford shirt", ...])
@@ -370,6 +386,10 @@ export function buildListingTags(
 
   const opts = nicheTagsOrOpts;
   const count = opts.count ?? TAG_COUNT;
+  const evergreen = opts.evergreenTags ?? EVERGREEN_TAGS;
+  const evergreenSet = new Set(evergreen.map((t) => t.toLowerCase()));
+  const isShopEvergreen = (tag: string) =>
+    evergreenSet.has(normalizeTagKey(tag));
 
   const nichePool = nicheTagCandidates({
     subject: opts.subject,
@@ -377,6 +397,7 @@ export function buildListingTags(
     niche: opts.niche,
     trending: opts.trending,
     extra: opts.candidates,
+    nicheGenericWords: opts.nicheGenericWords,
   });
 
   const out: string[] = [];
@@ -384,13 +405,17 @@ export function buildListingTags(
 
   const push = (raw: string) => {
     if (out.length >= count) return false;
-    // Niche/extra: only complete short phrases. Evergreen already fits ≤20.
-    const candidates = isEvergreenTag(raw)
+    const candidates = isShopEvergreen(raw) || isEvergreenTag(raw)
       ? [clampEtsyTag(raw).toLowerCase()].filter(Boolean)
       : shortTagSeeds(raw).map((t) => t.toLowerCase());
     for (const tag of candidates) {
       if (!tag || tag.length < 2) continue;
-      if (!isEvergreenTag(tag) && !isCompleteEtsyTag(tag)) continue;
+      if (
+        !isShopEvergreen(tag) &&
+        !isEvergreenTag(tag) &&
+        !isCompleteEtsyTag(tag)
+      )
+        continue;
       const key = normalizeTagKey(tag);
       if (outSeen.has(key)) continue;
       outSeen.add(key);
@@ -400,19 +425,15 @@ export function buildListingTags(
     return false;
   };
 
-  // 1) Niche first (3) so all 10 evergreen still fit
   for (const t of nichePool.slice(0, NICHE_TAG_TARGET_MIN)) push(t);
 
-  // 2) Evergreen core
-  for (const t of EVERGREEN_TAGS) push(t);
+  for (const t of evergreen) push(t);
 
-  // 3) Extra niche only if a slot remains
   for (const t of nichePool.slice(NICHE_TAG_TARGET_MIN)) {
     if (out.length >= count) break;
     push(t);
   }
 
-  // If still short (very unusual), repeat truncated subject fragments — never junk.
   if (out.length < count) {
     const fallback = clampEtsyTag(`${opts.subject} gift`).toLowerCase();
     if (fallback) push(fallback);

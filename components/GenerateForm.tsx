@@ -5,18 +5,17 @@ import { useSearchParams } from "next/navigation";
 import { CopyField } from "./CopyField";
 import { ErrorBanner, fieldClass } from "./ui";
 import { formatTagsLine, parseTagsLine, TAG_COUNT } from "@/lib/tags";
-import { PRODUCT_TYPES } from "@/lib/types";
 import type { ListingOutput } from "@/lib/types";
 import {
   TSHIRT_COLORS,
   TSHIRT_SIZES,
-  MEDIA_SLOTS,
-  MEDIA_ALT_TEXT_MAX,
   THEME_BACKGROUND_COUNT_OPTIONS,
   LISTING_THEME_BACKGROUND_COUNT,
   backgroundIdsForThemeCount,
   type ThemeBackgroundCount,
 } from "@/lib/product-options";
+import { getShop } from "@/lib/shops";
+import { useActiveShopId } from "./ShopSwitcher";
 
 type Result = ListingOutput & { id?: string | null; isMock?: boolean };
 
@@ -36,9 +35,11 @@ function progressLabel(pct: number): string {
 
 export function GenerateForm() {
   const searchParams = useSearchParams();
+  const shopId = useActiveShopId();
+  const shop = getShop(shopId);
   const [subject, setSubject] = useState("");
-  const [productType, setProductType] = useState<string>(PRODUCT_TYPES[0]);
-  const [colors, setColors] = useState("Black, White");
+  const [productType, setProductType] = useState<string>(shop.defaults.productType);
+  const [colors, setColors] = useState(shop.defaults.colors);
   const [themeBackgroundCount, setThemeBackgroundCount] =
     useState<ThemeBackgroundCount>(LISTING_THEME_BACKGROUND_COUNT);
   const [loading, setLoading] = useState(false);
@@ -47,6 +48,11 @@ export function GenerateForm() {
   const [result, setResult] = useState<Result | null>(null);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const finishTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setProductType(shop.defaults.productType);
+    setColors(shop.defaults.colors);
+  }, [shopId, shop.defaults.productType, shop.defaults.colors]);
 
   useEffect(() => {
     const fromQuery = searchParams.get("subject");
@@ -105,10 +111,13 @@ export function GenerateForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          shopId,
           subject,
           productType,
           colors,
-          backgroundIds: backgroundIdsForThemeCount(themeBackgroundCount),
+          ...(shop.id === "motor-element"
+            ? { backgroundIds: backgroundIdsForThemeCount(themeBackgroundCount) }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -134,19 +143,24 @@ export function GenerateForm() {
             Generate listing
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Compares live Etsy marketplace listings for your keyword against
-            your catalog to shape titles, tags, and descriptions.
+            {shop.hasSyncedCatalog
+              ? "Compares live Etsy marketplace listings for your keyword against your catalog to shape titles, tags, and descriptions."
+              : "Uses marketplace comps and nursery SEO briefs to shape titles, tags, and descriptions."}
           </p>
         </div>
 
         <label className="block space-y-1">
           <span className="text-xs uppercase tracking-wide text-zinc-500">
-            Vehicle / subject
+            {shop.id === "motor-element" ? "Vehicle / subject" : "Listing concept"}
           </span>
           <input
             className={fieldClass}
             required
-            placeholder="e.g. Ford Mustang, Honda NSX NA1"
+            placeholder={
+              shop.id === "motor-element"
+                ? "e.g. Ford Mustang, Honda NSX NA1"
+                : "e.g. Personalized Bunny Baby Blanket"
+            }
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
           />
@@ -165,7 +179,7 @@ export function GenerateForm() {
             value={productType}
             onChange={(e) => setProductType(e.target.value)}
           >
-            {PRODUCT_TYPES.map((p) => (
+            {shop.productTypes.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>
@@ -185,31 +199,34 @@ export function GenerateForm() {
           />
         </label>
 
-        <label className="block space-y-1">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">
-            Theme backgrounds
-          </span>
-          <select
-            className={fieldClass}
-            value={themeBackgroundCount}
-            onChange={(e) =>
-              setThemeBackgroundCount(
-                Number(e.target.value) as ThemeBackgroundCount
-              )
-            }
-          >
-            {THEME_BACKGROUND_COUNT_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                {n} backgrounds
-              </option>
-            ))}
-          </select>
-          <p className="font-mono text-xs text-zinc-600">
-            If it is generic use 16, if it is niche specific like Toyota, or offroad use 9
-          </p>
-        </label>
+        {shop.id === "motor-element" && (
+          <label className="block space-y-1">
+            <span className="text-xs uppercase tracking-wide text-zinc-500">
+              Theme backgrounds
+            </span>
+            <select
+              className={fieldClass}
+              value={themeBackgroundCount}
+              onChange={(e) =>
+                setThemeBackgroundCount(
+                  Number(e.target.value) as ThemeBackgroundCount
+                )
+              }
+            >
+              {THEME_BACKGROUND_COUNT_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n} backgrounds
+                </option>
+              ))}
+            </select>
+            <p className="font-mono text-xs text-zinc-600">
+              If it is generic use 16, if it is niche specific like Toyota, or
+              offroad use 9
+            </p>
+          </label>
+        )}
 
-        {productType === "t-shirt" && (
+        {shop.id === "motor-element" && productType === "t-shirt" && (
           <div className="rounded border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-400">
             <p className="font-medium text-zinc-300">T-shirt variants</p>
             <p className="mt-1 font-mono">
@@ -310,7 +327,7 @@ export function GenerateForm() {
                   Media Alt Texts ({result.mediaAltTexts.length})
                 </h3>
                 {result.mediaAltTexts.map((item, idx) => {
-                  const slotLabel = MEDIA_SLOTS[idx] || item.slot;
+                  const slotLabel = shop.mediaSlots[idx] || item.slot;
                   return (
                     <CopyField
                       key={`${idx}-${slotLabel}`}
@@ -318,12 +335,12 @@ export function GenerateForm() {
                       value={item.altText}
                       multiline
                       rows={4}
-                      hint={`${item.altText.length} / ${MEDIA_ALT_TEXT_MAX} chars`}
+                      hint={`${item.altText.length} / ${shop.mediaAltTextMax} chars`}
                       onChange={(v) => {
                         const updated = [...result.mediaAltTexts];
                         updated[idx] = {
                           slot: slotLabel,
-                          altText: v.slice(0, MEDIA_ALT_TEXT_MAX),
+                          altText: v.slice(0, shop.mediaAltTextMax),
                         };
                         setResult({ ...result, mediaAltTexts: updated });
                       }}

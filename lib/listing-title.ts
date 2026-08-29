@@ -241,7 +241,7 @@ export function fillTitleWordBudget(
   return result.replace(/\s+/g, " ").trim().replace(/,\s*$/, "");
 }
 
-function trimTitleChars(title: string, max: number): string {
+export function trimTitleChars(title: string, max: number): string {
   if (title.length <= max) return title;
   const cut = title.slice(0, max).trimEnd();
   const lastComma = cut.lastIndexOf(",");

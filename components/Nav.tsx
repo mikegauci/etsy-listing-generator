@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { ShopSwitcher, useActiveShopId } from "./ShopSwitcher";
+import { getShop } from "@/lib/shops";
 
 const links = [
   { href: "/", label: "Generate" },
+  { href: "/mockups", label: "Mockups" },
   { href: "/duplicate", label: "Duplicate" },
   { href: "/titles", label: "Titles" },
   { href: "/shop-data", label: "Shop data" },
@@ -16,6 +19,8 @@ const links = [
 export function Nav() {
   const pathname = usePathname();
   const router = useRouter();
+  const shopId = useActiveShopId();
+  const shop = getShop(shopId);
 
   async function logout() {
     await fetch("/api/auth/login", { method: "DELETE" });
@@ -30,9 +35,10 @@ export function Nav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
         <div className="flex items-baseline gap-3">
           <Link href="/" className="font-semibold tracking-tight text-zinc-100">
-            Motor Element
+            {shop.navLabel}
           </Link>
           <span className="font-mono text-xs text-zinc-500">Listing Studio</span>
+          <ShopSwitcher />
         </div>
         <nav className="flex items-center gap-1">
           {links.map((link) => {

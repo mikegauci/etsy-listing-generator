@@ -5,8 +5,10 @@ import type { GeneratedListingRow } from "@/lib/types";
 import { CopyField } from "./CopyField";
 import { ErrorBanner } from "./ui";
 import { formatTagsLine } from "@/lib/tags";
+import { useActiveShopId } from "./ShopSwitcher";
 
 export function HistoryPanel() {
+  const shopId = useActiveShopId();
   const [listings, setListings] = useState<GeneratedListingRow[]>([]);
   const [selected, setSelected] = useState<GeneratedListingRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -15,7 +17,10 @@ export function HistoryPanel() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/history", { cache: "no-store" });
+        const res = await fetch(
+          `/api/history?shopId=${encodeURIComponent(shopId)}`,
+          { cache: "no-store" }
+        );
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Failed to load");
         setListings(json.listings || []);
@@ -26,7 +31,7 @@ export function HistoryPanel() {
       }
     }
     load();
-  }, []);
+  }, [shopId]);
 
   return (
     <div className="space-y-6">
