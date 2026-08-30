@@ -2,6 +2,7 @@ import type { ShopConfig } from "./types";
 import {
   BACKGROUND_OPTIONS,
   CUSTOM_FIELDS,
+  DESCRIPTION_SEO_COPY,
   TSHIRT_COLORS,
   TSHIRT_SIZES,
   MEDIA_SLOTS,
@@ -16,7 +17,7 @@ import {
   formatListingClosingCopy,
   getDefaultBasePriceUsd,
 } from "../product-options";
-import { EVERGREEN_TAGS } from "../tags";
+import { EVERGREEN_TAGS, MOTOR_ELEMENT_TAG_NICHE } from "../tags";
 import {
   ALL_CHECKLIST_CATEGORIES,
   getSeoBriefForSubject,
@@ -113,6 +114,8 @@ export const motorElementShop: ShopConfig = {
   mediaAltTextMax: MEDIA_ALT_TEXT_MAX,
   evergreenTags: EVERGREEN_TAGS,
   nicheGenericWords: NICHE_GENERIC_WORDS,
+  tagNiche: MOTOR_ELEMENT_TAG_NICHE,
+  descriptionSeoCopy: DESCRIPTION_SEO_COPY,
   descriptionSectionMarkers: [
     "Mockup preview",
     "Front or back artwork",

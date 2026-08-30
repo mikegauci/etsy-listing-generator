@@ -13,12 +13,19 @@ import { generateLoomMockListing } from "./mock-generate";
 import {
   buildLoomSystemPrompt,
   buildLoomUserPrompt,
-  loomClosingCopy,
 } from "../prompts/little-and-loom";
+import {
+  LOOM_BLANKET_COLORS,
+  LOOM_DESIGN_OPTIONS,
+  LOOM_NO_TEXT_OPTION,
+  LOOM_TEXT_COLORS,
+  loomClosingCopy,
+} from "./product-facts";
 import {
   LOOM_EVERGREEN_TAGS,
   LOOM_MEDIA_SLOTS,
   LOOM_SLOT_VISUALS,
+  LOOM_TAG_NICHE,
   loomSlotBonus,
 } from "../slot-copy/little-and-loom";
 
@@ -59,8 +66,7 @@ const loomConfigBase: Omit<
   defaults: {
     style: "Custom nursery artwork",
     audience: "Baby shower gift",
-    colors:
-      "Oatmeal Beige, Chocolate Brown, Baby Blue, Baby Pink, Olive Green",
+    colors: LOOM_BLANKET_COLORS.join(", "),
     productType: "personalized baby blanket",
   },
   basePriceUsd: 39.99,
@@ -76,15 +82,9 @@ const loomConfigBase: Omit<
   variants: null,
   customFields: [
     {
-      name: "Baby name for embroidery",
+      name: "Personalization text",
       type: "text",
-      optional: false,
-    },
-    {
-      name: "Upload artwork PNG",
-      type: "file",
       optional: true,
-      maxFiles: 1,
     },
   ],
   mediaSlots: LOOM_MEDIA_SLOTS,
@@ -92,18 +92,22 @@ const loomConfigBase: Omit<
   mediaAltTextMax: 300,
   evergreenTags: LOOM_EVERGREEN_TAGS,
   nicheGenericWords: LOOM_NICHE_GENERIC_WORDS,
+  tagNiche: LOOM_TAG_NICHE,
+  descriptionSeoCopy: {
+    productNoun: "personalized baby blanket",
+    audienceNoun: "new parents",
+  },
   descriptionSectionMarkers: [
-    "Mockup preview",
-    "Artwork & name",
-    "Details",
-    "Colour options",
-    "Personalization",
-    "Size & material",
-    "Questions",
-    "Explore the shop",
-    "Why choose us",
-    "Terms & conditions",
-    "Follow us",
+    "WHY YOU'LL LOVE IT",
+    "BLANKET COLORS",
+    "DESIGN OPTIONS",
+    "TEXT COLORS",
+    "HOW TO PERSONALIZE",
+    "PERFECT FOR",
+    "PRODUCT DETAILS",
+    "CARE INSTRUCTIONS",
+    "PLEASE NOTE",
+    "QUESTIONS OR SPECIAL REQUESTS",
   ],
   titleWordMin: 13,
   titleWordMax: 16,
@@ -119,11 +123,13 @@ const loomConfigBase: Omit<
     /(blanket|baby|newborn|nursery|shower|gift|personalized|custom|name|swaddle|fleece)/i,
   closingCopy: loomClosingCopy,
   formatBackgroundMarketingCopy: () =>
-    "Choose from five soft fleece colours: Oatmeal Beige, Chocolate Brown, Baby Blue, Baby Pink, and Olive Green. Select your colour at checkout.",
+    `Choose from five velveteen microfiber blanket colors: ${LOOM_BLANKET_COLORS.join(", ")}. Select your color, design option and text color at checkout.`,
   formatCustomFieldsNotes: () =>
     [
-      "Baby name for embroidery: required text at checkout",
-      "Upload artwork PNG: optional file upload (1 image)",
+      `Blanket color: ${LOOM_BLANKET_COLORS.join(", ")}`,
+      `Design option: ${LOOM_DESIGN_OPTIONS.map((o) => o.label).join(", ")}`,
+      `Text color: ${LOOM_TEXT_COLORS.join(", ")}, ${LOOM_NO_TEXT_OPTION}`,
+      "Personalization text: printed exactly as entered at checkout",
     ].join("\n"),
   getDefaultBackgroundIds: () => [],
   maxBackgrounds: 0,

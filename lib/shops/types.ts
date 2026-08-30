@@ -2,6 +2,8 @@ import type { GenerateInput, ListingOutput } from "../types";
 import type { MarketplaceListing } from "../etsy";
 import type { ShopListing } from "../types";
 import type { ChecklistCategory, ChecklistSeoBrief } from "../title-checklist";
+import type { DescriptionSeoCopy } from "../seo-copy";
+import type { TagNicheProfile } from "../tags";
 
 export type ShopId = "motor-element" | "little-and-loom";
 
@@ -77,7 +79,9 @@ export type ShopConfig = {
   mediaAltTextMax: number;
   evergreenTags: readonly string[];
   nicheGenericWords: ReadonlySet<string>;
+  tagNiche: TagNicheProfile;
   descriptionSectionMarkers: readonly string[];
+  descriptionSeoCopy: DescriptionSeoCopy;
   titleWordMin: number;
   titleWordMax: number;
   titlePrefix: "Custom" | "Personalized";

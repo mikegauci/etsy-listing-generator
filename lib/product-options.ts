@@ -97,6 +97,11 @@ export const TSHIRT_SIZES = [
   "5XL",
 ] as const;
 
+export const DESCRIPTION_SEO_COPY = {
+  productNoun: "custom car-photo piece",
+  audienceNoun: "car fans",
+};
+
 export const CUSTOM_FIELDS: CustomFieldDef[] = [
   {
     name: "Upload car photo",

@@ -9,7 +9,17 @@ import {
 } from "../../seo-copy";
 import { ensurePersonalizedTitlePrefix } from "../../listing-title-shop";
 import { getLoomSeoBriefForSubject } from "./checklist";
-import { loomClosingCopy } from "../prompts/little-and-loom";
+import {
+  LOOM_SECTION_HEADINGS,
+  loomBlanketColorsBlock,
+  loomCareInstructionsBlock,
+  loomClosingCopy,
+  loomDesignOptionsBlock,
+  loomHowToPersonalizeBlock,
+  loomPerfectForBlock,
+  loomProductDetailsBlock,
+  loomTextColorsBlock,
+} from "./product-facts";
 import {
   LOOM_EVERGREEN_TAGS,
   LOOM_MEDIA_SLOTS,
@@ -17,8 +27,6 @@ import {
   loomSlotBonus,
 } from "../slot-copy/little-and-loom";
 import type { ShopConfig } from "../types";
-
-const SECTION_DIVIDER = "____________________";
 
 export function generateLoomMockListing(
   shop: ShopConfig,
@@ -73,6 +81,7 @@ export function generateLoomMockListing(
     count: 13,
     evergreenTags: [...LOOM_EVERGREEN_TAGS],
     nicheGenericWords: shop.nicheGenericWords,
+    tagNiche: shop.tagNiche,
   });
 
   const basePrice = input.price ?? shop.basePriceUsd;
@@ -80,63 +89,57 @@ export function generateLoomMockListing(
 
   const description = enrichDescriptionWithSeoTags(
     [
-      `Looking for a personalized ${nicheForTags} ${product}? Soft fleece nursery blanket with custom artwork and optional embroidered name — a thoughtful baby shower or newborn gift.`,
+      `🧸 PERSONALIZED ${nicheForTags.toUpperCase()} BABY BLANKET 🧸`,
       ``,
-      SECTION_DIVIDER,
+      `Wrap your little one in a soft, cozy blanket made especially for them.`,
       ``,
-      `👀 Mockup preview`,
-      `• We prepare your design before production when applicable`,
-      `• Review details and reach out if you'd like adjustments`,
+      `This personalized baby blanket features ${nicheForTags} artwork paired with your baby's name for a sweet and meaningful keepsake.`,
       ``,
-      SECTION_DIVIDER,
+      `Choose your preferred blanket color, personalization style and text color to create a blanket that feels completely unique.`,
       ``,
-      `🎨 Artwork & name`,
-      `• Custom printed artwork on soft fleece`,
-      `• Optional embroidered name below the design`,
+      `Made from ultra-soft velveteen microfiber, it's perfect for cuddle time, stroller rides, nursery moments, milestone photos and cozy days at home.`,
       ``,
-      SECTION_DIVIDER,
+      `Whether you're shopping for a baby shower gift, newborn gift or something special for your own little one, this custom baby name blanket makes a beautiful keepsake for years to come.`,
       ``,
-      `✨ Details`,
-      `• Product: ${product}`,
-      `• Perfect for snuggles, stroller, crib, and photo props`,
+      LOOM_SECTION_HEADINGS.whyYoullLoveIt,
       ``,
-      SECTION_DIVIDER,
+      `• Personalized with your baby's name`,
+      `• Sweet ${nicheForTags} artwork`,
+      `• Choose from five beautiful blanket colors`,
+      `• Multiple personalization options`,
+      `• Ultra-soft velveteen plush feel`,
+      `• Lightweight, warm and comfortable`,
+      `• Vibrant one-sided print`,
+      `• Reinforced stitched edges`,
+      `• A thoughtful personalized baby gift`,
+      `• Available in three blanket sizes`,
       ``,
-      `🎨 Colour options`,
-      `• Oatmeal Beige`,
-      `• Chocolate Brown`,
-      `• Baby Blue`,
-      `• Baby Pink`,
-      `• Olive Green`,
+      loomBlanketColorsBlock(),
       ``,
-      SECTION_DIVIDER,
+      loomDesignOptionsBlock(),
       ``,
-      `📸 Personalization`,
-      `• Add the baby name at checkout`,
-      `• Upload or describe your preferred artwork motif`,
+      loomTextColorsBlock(),
       ``,
-      SECTION_DIVIDER,
+      loomHowToPersonalizeBlock(),
       ``,
-      `🧺 Size & material`,
-      `• Approx. 30 x 40 inches soft fleece blanket`,
-      `• Machine wash cold, gentle cycle`,
-      `• Tumble dry low`,
+      loomPerfectForBlock(),
       ``,
-      SECTION_DIVIDER,
+      loomProductDetailsBlock(),
       ``,
-      `💬 Questions?`,
-      `Message us for custom artwork requests or gift notes.`,
+      `🌸 A SWEET KEEPSAKE MADE JUST FOR THEM`,
       ``,
-      SECTION_DIVIDER,
+      `A baby's name is one of the first things chosen especially for them, and this blanket turns that name into something they can cuddle, photograph and keep.`,
       ``,
-      `🏪 Explore the shop`,
-      `Browse LittleAndLoomGifts for more personalized nursery blankets and baby gifts.`,
+      `The ${nicheForTags} design creates a warm nursery feel, while the personalized name makes every blanket completely unique.`,
       ``,
-      SECTION_DIVIDER,
+      `From quiet mornings and stroller adventures to milestone photos and cozy family moments, it's designed to become part of those little memories worth holding onto.`,
+      ``,
+      loomCareInstructionsBlock(),
       ``,
       loomClosingCopy(),
     ].join("\n"),
-    tags
+    tags,
+    shop.descriptionSeoCopy
   );
 
   const seoPhrases = buildAltSeoPhrasePool({
@@ -146,6 +149,7 @@ export function generateLoomMockListing(
     trending: trendingKeywords,
     extra: marketplaceTagSeeds,
     nicheGenericWords: shop.nicheGenericWords,
+    tagNiche: shop.tagNiche,
   });
 
   const altText = buildSeoAltText({
@@ -161,6 +165,8 @@ export function generateLoomMockListing(
     brandName: shop.name,
     mediaAltTextMax: shop.mediaAltTextMax,
     mediaAltTextMin: shop.mediaAltTextMin,
+    nicheGenericWords: shop.nicheGenericWords,
+    tagNiche: shop.tagNiche,
   });
 
   const mediaAltTexts = LOOM_MEDIA_SLOTS.map((slot, i) => ({
@@ -179,6 +185,8 @@ export function generateLoomMockListing(
       brandName: shop.name,
       mediaAltTextMax: shop.mediaAltTextMax,
       mediaAltTextMin: shop.mediaAltTextMin,
+      nicheGenericWords: shop.nicheGenericWords,
+      tagNiche: shop.tagNiche,
     }),
   }));
 
@@ -191,8 +199,6 @@ export function generateLoomMockListing(
     seoNotes: `Mock generation for ${shop.name}. Marketplace comps: ${marketplace.length}. Trending: ${trendingKeywords.slice(0, 6).join(", ")}.`,
     referencedListings: referenced.map(formatReferencedListing),
     suggestedPrice,
-    optionsNotes:
-      input.optionsNotes ||
-      "Personalization: custom name + artwork. Five fleece colour options.",
+    optionsNotes: input.optionsNotes || shop.formatCustomFieldsNotes(),
   };
 }

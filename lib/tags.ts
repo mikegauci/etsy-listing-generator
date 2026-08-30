@@ -95,11 +95,13 @@ export function tagMatchesSubjectNiche(
 export function tagMatchesDistinctiveNiche(
   tag: string,
   subjectNiche: string,
-  nicheGenericWords?: ReadonlySet<string>
+  nicheGenericWords?: ReadonlySet<string>,
+  distinctiveStopWords?: ReadonlySet<string>
 ): boolean {
   const distinctive = distinctiveNicheTokens(
     subjectNiche,
-    nicheGenericWords
+    nicheGenericWords,
+    distinctiveStopWords
   );
   if (distinctive.length === 0) {
     return tagMatchesSubjectNiche(tag, subjectNiche, nicheGenericWords);
@@ -112,11 +114,13 @@ export function tagMatchesDistinctiveNiche(
 
 function distinctiveNicheTokens(
   subjectNiche: string,
-  nicheGenericWords?: ReadonlySet<string>
+  nicheGenericWords?: ReadonlySet<string>,
+  distinctiveStopWords: ReadonlySet<string> = MOTOR_ELEMENT_TAG_NICHE.distinctiveStopWords
 ): string[] {
-  return contentTokens(subjectNiche, nicheGenericWords ?? NICHE_GENERIC_WORDS).filter(
-    (t) => t !== "car" && t !== "cars"
-  );
+  return contentTokens(
+    subjectNiche,
+    nicheGenericWords ?? NICHE_GENERIC_WORDS
+  ).filter((t) => !distinctiveStopWords.has(t));
 }
 
 /**
@@ -250,11 +254,48 @@ const TAG_PRODUCT_OR_GIFT = new Set([
   "gifts",
 ]);
 
-function hasProductOrGiftWord(tag: string): boolean {
+/**
+ * Per-shop vocabulary for niche tag building. Without this the shirt/tee wording
+ * below leaks into other shops, both in their tags and in the SEO paragraph the
+ * description enrichment weaves from those tags.
+ */
+export type TagNicheProfile = {
+  productWords: ReadonlySet<string>;
+  buildSeeds: (first: string, shortBase: string) => string[];
+  subjectPrefix: RegExp;
+  /** Trailing product words dropped when deriving the niche from the subject. */
+  productSuffix: RegExp;
+  /** Trailing product and gift words dropped when deriving the short tag base. */
+  baseSuffix: RegExp;
+  /** Product words that, alongside a color word, make a tag purely color-focused. */
+  colorPairWords: ReadonlySet<string>;
+  distinctiveStopWords: ReadonlySet<string>;
+};
+
+export const MOTOR_ELEMENT_TAG_NICHE: TagNicheProfile = {
+  productWords: TAG_PRODUCT_OR_GIFT,
+  buildSeeds: (first, shortBase) => [
+    `${shortBase} shirt`,
+    `${shortBase} gift`,
+    `${first} car gift`,
+    `${first} shirt`,
+    `${shortBase} tee`,
+  ],
+  subjectPrefix: /^custom\s+/i,
+  productSuffix: /\s+(t-?shirts?|tees?|hoodies?)$/i,
+  baseSuffix: /\s+(t-?shirts?|tees?|shirts?|hoodies?|gifts?)$/i,
+  colorPairWords: new Set(["tee", "shirt", "tshirt", "t-shirt"]),
+  distinctiveStopWords: new Set(["car", "cars"]),
+};
+
+function hasProductOrGiftWord(
+  tag: string,
+  productWords: ReadonlySet<string>
+): boolean {
   return tag
     .toLowerCase()
     .split(/\s+/)
-    .some((w) => TAG_PRODUCT_OR_GIFT.has(w));
+    .some((w) => productWords.has(w));
 }
 
 function normalizeTagKey(value: string): string {
@@ -280,29 +321,28 @@ export function nicheTagCandidates(opts: {
   trending?: string[];
   extra?: string[];
   nicheGenericWords?: ReadonlySet<string>;
+  tagNiche?: TagNicheProfile;
 }): string[] {
+  const profile = opts.tagNiche ?? MOTOR_ELEMENT_TAG_NICHE;
   const niche =
     (opts.niche || "").trim() ||
     opts.subject
-      .replace(/^custom\s+/i, "")
-      .replace(/\s+(t-?shirts?|tees?|hoodies?)$/i, "")
+      .replace(profile.subjectPrefix, "")
+      .replace(profile.productSuffix, "")
       .trim() ||
     opts.subject.trim();
 
   const nicheWords = niche.split(/\s+/).filter(Boolean);
   const first = nicheWords[0] || "car";
   const short = nicheWords.slice(0, 2).join(" ") || niche;
-  const shortBase =
-    short
-      .replace(/\s+(t-?shirts?|tees?|shirts?|hoodies?|gifts?)$/i, "")
-      .trim() || first;
+  const shortBase = short.replace(profile.baseSuffix, "").trim() || first;
 
   const fromTitle = (opts.title || "")
     .split(",")
     .map((s) => s.replace(/\s+/g, " ").trim())
     .filter(Boolean)
     .map((seg, i) =>
-      i === 0 ? seg.replace(/^custom\s+/i, "").trim() : seg
+      i === 0 ? seg.replace(profile.subjectPrefix, "").trim() : seg
     )
     // Only keep clean title segments — skip gift/recipient keyword dumps.
     .filter((seg) => seg && !isRecipientKeywordDump(seg));
@@ -314,11 +354,7 @@ export function nicheTagCandidates(opts: {
     ...fromTitleShort,
     ...(opts.trending || []),
     ...(opts.extra || []),
-    `${shortBase} shirt`,
-    `${shortBase} gift`,
-    `${first} car gift`,
-    `${first} shirt`,
-    `${shortBase} tee`,
+    ...profile.buildSeeds(first, shortBase),
   ];
 
   const out: string[] = [];
@@ -332,10 +368,18 @@ export function nicheTagCandidates(opts: {
       if (isEvergreenTag(tag)) continue;
       if (isRecipientKeywordDump(tag)) continue;
       // Drop off-niche junk / typos (e.g. "personalized cat" when subject is car/Hellcat).
-      if (!tagMatchesSubjectNiche(tag, niche)) continue;
+      if (!tagMatchesSubjectNiche(tag, niche, opts.nicheGenericWords)) continue;
       // Prefer real niche (jdm/racing/…) over generic "car shirt" when subject has one.
-      if (!tagMatchesDistinctiveNiche(tag, niche)) continue;
-      if (!hasProductOrGiftWord(tag)) continue;
+      if (
+        !tagMatchesDistinctiveNiche(
+          tag,
+          niche,
+          opts.nicheGenericWords,
+          profile.distinctiveStopWords
+        )
+      )
+        continue;
+      if (!hasProductOrGiftWord(tag, profile.productWords)) continue;
       {
         const words = tag.split(/\s+/);
         const colorFocused =
@@ -344,7 +388,9 @@ export function nicheTagCandidates(opts: {
             words.every(
               (w) =>
                 containsGarmentColor(w) ||
-                ["tee", "shirt", "tshirt", "t-shirt", "or", "and"].includes(w)
+                profile.colorPairWords.has(w) ||
+                w === "or" ||
+                w === "and"
             ));
         if (colorFocused) continue;
       }
@@ -374,6 +420,7 @@ export function buildListingTags(
         count?: number;
         evergreenTags?: readonly string[];
         nicheGenericWords?: ReadonlySet<string>;
+        tagNiche?: TagNicheProfile;
       }
 ): string[] {
   // Back-compat: buildListingTags(["ford shirt", ...])
@@ -398,6 +445,7 @@ export function buildListingTags(
     trending: opts.trending,
     extra: opts.candidates,
     nicheGenericWords: opts.nicheGenericWords,
+    tagNiche: opts.tagNiche,
   });
 
   const out: string[] = [];

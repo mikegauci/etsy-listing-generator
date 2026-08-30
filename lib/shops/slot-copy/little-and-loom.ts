@@ -1,4 +1,31 @@
 import type { SlotVisualFn } from "../slot-copy/motor-element";
+import type { TagNicheProfile } from "../../tags";
+
+export const LOOM_TAG_NICHE: TagNicheProfile = {
+  productWords: new Set([
+    "blanket",
+    "blankets",
+    "swaddle",
+    "swaddles",
+    "throw",
+    "keepsake",
+    "nursery",
+    "gift",
+    "gifts",
+  ]),
+  buildSeeds: (first, shortBase) => [
+    `${shortBase} blanket`,
+    `${shortBase} gift`,
+    `${first} baby gift`,
+    `${first} blanket`,
+    `${shortBase} nursery`,
+  ],
+  subjectPrefix: /^(personali[sz]ed|custom)\s+/i,
+  productSuffix: /\s+(blankets?|swaddles?|throws?)$/i,
+  baseSuffix: /\s+(blankets?|swaddles?|throws?|gifts?)$/i,
+  colorPairWords: new Set(["blanket", "blankets", "swaddle", "throw"]),
+  distinctiveStopWords: new Set(),
+};
 
 export const LOOM_MEDIA_SLOTS = [
   "Featured Image",
@@ -30,21 +57,21 @@ export const LOOM_EVERGREEN_TAGS = [
 
 export const LOOM_SLOT_VISUALS: Record<string, SlotVisualFn> = {
   "Featured Image": (s, p) =>
-    `Hero product photo of a personalized ${s} ${p} with custom artwork and embroidered name`,
+    `Hero product photo of a personalized ${s} ${p} with printed artwork and a custom name`,
   "Oatmeal Beige Blanket": (s, p) =>
-    `Oatmeal beige fleece ${p} featuring ${s} artwork in a nursery flat lay`,
+    `Oatmeal beige velveteen ${p} featuring ${s} artwork in a nursery flat lay`,
   "Chocolate Brown Blanket": (s, p) =>
-    `Chocolate brown fleece ${p} featuring ${s} artwork in a cozy nursery setting`,
+    `Chocolate brown velveteen ${p} featuring ${s} artwork in a cozy nursery setting`,
   "Baby Blue Blanket": (s, p) =>
-    `Baby blue fleece ${p} featuring ${s} artwork styled for a boy nursery gift`,
+    `Baby blue velveteen ${p} featuring ${s} artwork styled for a boy nursery gift`,
   "Baby Pink Blanket": (s, p) =>
-    `Baby pink fleece ${p} featuring ${s} artwork styled for a girl nursery gift`,
+    `Baby pink velveteen ${p} featuring ${s} artwork styled for a girl nursery gift`,
   "Olive Green Blanket": (s, p) =>
-    `Olive green fleece ${p} featuring ${s} artwork in a neutral nursery scene`,
+    `Olive green velveteen ${p} featuring ${s} artwork in a neutral nursery scene`,
   "Name Personalization": (s, p) =>
-    `Close detail of custom name embroidery on a ${s} ${p}`,
+    `Close detail of the printed custom name on a ${s} ${p}`,
   "Artwork Close Up": (s, p) =>
-    `Close-up of printed ${s} artwork on soft fleece ${p} texture`,
+    `Close-up of printed ${s} artwork on soft velveteen ${p} texture`,
   "Colour Chart": (s, p) =>
     `Colour options chart for a ${s} personalized ${p} gift listing`,
   "How to Order": (s, p) =>
@@ -101,12 +128,12 @@ export function loomSlotBonus(
     ],
     "Name Personalization": [
       `custom name blanket`,
-      `embroidered name`,
+      `printed baby name`,
       `${short} name gift`,
     ],
     "Artwork Close Up": [
       `${short} print detail`,
-      `fleece print quality`,
+      `velveteen print quality`,
       `custom artwork blanket`,
     ],
     "Colour Chart": [
@@ -121,7 +148,7 @@ export function loomSlotBonus(
     ],
     "Size & Material": [
       `baby blanket size`,
-      `soft fleece blanket`,
+      `soft velveteen blanket`,
       `premium baby gift`,
     ],
     "The Perfect Baby Gift": [

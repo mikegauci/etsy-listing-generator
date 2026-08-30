@@ -3,7 +3,7 @@ import {
   MEDIA_ALT_TEXT_MIN,
   MEDIA_SLOTS,
 } from "./product-options";
-import { nicheTagCandidates } from "./tags";
+import { nicheTagCandidates, type TagNicheProfile } from "./tags";
 import type { SlotVisualFn } from "./shops/slot-copy/motor-element";
 import { MOTOR_ELEMENT_SLOT_BONUS, MOTOR_ELEMENT_SLOT_VISUALS } from "./shops/slot-copy/motor-element";
 
@@ -47,6 +47,12 @@ function uniquePhrases(phrases: string[]): string[] {
 
 const SECTION_DIVIDER = "____________________";
 
+/** Brand-specific nouns used when weaving missing tags back into a description. */
+export type DescriptionSeoCopy = {
+  productNoun: string;
+  audienceNoun: string;
+};
+
 /** Soft cap on the visual seed so SEO phrases still fit. */
 const BASE_BUDGET = 140;
 
@@ -89,6 +95,7 @@ export function buildAltSeoPhrasePool(opts: {
   trending?: string[];
   extra?: string[];
   nicheGenericWords?: ReadonlySet<string>;
+  tagNiche?: TagNicheProfile;
 }): string[] {
   const extras = nicheTagCandidates({
     subject: opts.subject,
@@ -96,6 +103,7 @@ export function buildAltSeoPhrasePool(opts: {
     trending: opts.trending,
     extra: opts.extra,
     nicheGenericWords: opts.nicheGenericWords,
+    tagNiche: opts.tagNiche,
   });
 
   return uniquePhrases([...(opts.tags || []), ...extras, ...(opts.trending || [])]);
@@ -182,6 +190,7 @@ export function buildSeoAltText(opts: {
   mediaAltTextMax?: number;
   mediaSlots?: readonly string[];
   nicheGenericWords?: ReadonlySet<string>;
+  tagNiche?: TagNicheProfile;
 }): string {
   const subject = opts.subject.trim() || "custom car";
   const product = (opts.product || "t-shirt").trim();
@@ -226,6 +235,7 @@ export function buildSeoAltText(opts: {
       tags: opts.tags,
       trending: opts.trending,
       nicheGenericWords: opts.nicheGenericWords,
+      tagNiche: opts.tagNiche,
     }),
     ...(slot ? slotBonusPhrases(slot, subject, product, opts.slotBonusPhrases) : []),
   ]);
@@ -251,15 +261,46 @@ export function buildSeoAltText(opts: {
   return truncateAtWord(text, altMax);
 }
 
+function isSectionHeading(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith(SECTION_DIVIDER)) return true;
+  return (trimmed.codePointAt(0) ?? 0) > 0x2000;
+}
+
+/**
+ * Offset of the first section boundary that follows the opening prose, so the
+ * SEO paragraph lands at the end of the intro rather than under a heading or
+ * dumped at the very bottom. Shops without divider lines are handled by
+ * looking for the first emoji heading that comes after real prose.
+ */
+function findSeoInsertOffset(body: string): number {
+  const dividerIdx = body.indexOf(SECTION_DIVIDER);
+  if (dividerIdx > 0) return dividerIdx;
+
+  const lines = body.split("\n");
+  let offset = 0;
+  let sawProse = false;
+  for (const line of lines) {
+    if (isSectionHeading(line)) {
+      if (sawProse) return offset;
+    } else if (line.trim()) {
+      sawProse = true;
+    }
+    offset += line.length + 1;
+  }
+  return -1;
+}
+
 /**
  * Ensure recommended listing tags appear as exact phrases in the description.
- * Inserts a short natural SEO paragraph after the opening (before the first
- * section divider) for any tags the body is still missing. Avoids a bare
- * comma-only keyword dump at the bottom.
+ * Inserts a short natural SEO paragraph after the opening for any tags the body
+ * is still missing. Avoids a bare comma-only keyword dump at the bottom.
  */
 export function enrichDescriptionWithSeoTags(
   description: string,
-  tags: string[]
+  tags: string[],
+  copy: DescriptionSeoCopy
 ): string {
   const body = (description || "").replace(/—/g, "-").trim();
   const cleanedTags = (tags || [])
@@ -281,22 +322,22 @@ export function enrichDescriptionWithSeoTags(
     const other = rest.filter((t) => !/\bgift\b/i.test(t));
     if (other.length) {
       sentences.push(
-        `This custom car-photo piece also fits shoppers after a ${joinOr(other)}.`
+        `This ${copy.productNoun} also fits shoppers after a ${joinOr(other)}.`
       );
     }
     if (giftish.length) {
       sentences.push(
-        `It makes a thoughtful ${joinOr(giftish)} for car fans and buyers who want something personal.`
+        `It makes a thoughtful ${joinOr(giftish)} for ${copy.audienceNoun} and buyers who want something personal.`
       );
     }
   }
 
   const seoParagraph = sentences.join(" ");
-  const dividerIdx = body.indexOf(SECTION_DIVIDER);
+  const insertAt = findSeoInsertOffset(body);
 
-  if (dividerIdx > 0) {
-    const opening = body.slice(0, dividerIdx).trimEnd();
-    const restBody = body.slice(dividerIdx);
+  if (insertAt > 0) {
+    const opening = body.slice(0, insertAt).trimEnd();
+    const restBody = body.slice(insertAt);
     return `${opening}\n\n${seoParagraph}\n\n${restBody}`;
   }
 

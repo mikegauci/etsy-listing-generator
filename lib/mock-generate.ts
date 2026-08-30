@@ -4,6 +4,7 @@ import {
   TSHIRT_COLORS,
   TSHIRT_SIZES,
   MEDIA_SLOTS,
+  DESCRIPTION_SEO_COPY,
   backgroundsByIds,
   formatCustomFieldsNotes,
   formatListingClosingCopy,
@@ -200,7 +201,8 @@ export function generateMockListing(
     ]
       .filter((line) => line !== null)
       .join("\n"),
-    tags
+    tags,
+    DESCRIPTION_SEO_COPY
   );
 
   const seoPhrases = buildAltSeoPhrasePool({

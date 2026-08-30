@@ -129,11 +129,13 @@ export async function generateWithOpenAI(
     candidates: parsed.tags || [],
     evergreenTags: shop.evergreenTags,
     nicheGenericWords: shop.nicheGenericWords,
+    tagNiche: shop.tagNiche,
   });
 
   const description = enrichDescriptionWithSeoTags(
     stripPricesFromDescription(parsed.description).replace(/—/g, "-"),
-    tags
+    tags,
+    shop.descriptionSeoCopy
   );
 
   const seoPhrases = buildAltSeoPhrasePool({
@@ -143,6 +145,7 @@ export async function generateWithOpenAI(
     trending: trendingKeywords,
     extra: parsed.tags || [],
     nicheGenericWords: shop.nicheGenericWords,
+    tagNiche: shop.tagNiche,
   });
 
   const rawAlts = parsed.mediaAltTexts || [];
@@ -165,6 +168,7 @@ export async function generateWithOpenAI(
       mediaAltTextMax: shop.mediaAltTextMax,
       mediaSlots: shop.mediaSlots,
       nicheGenericWords: shop.nicheGenericWords,
+      tagNiche: shop.tagNiche,
     }),
   }));
 
@@ -188,6 +192,7 @@ export async function generateWithOpenAI(
       mediaAltTextMax: shop.mediaAltTextMax,
       mediaSlots: shop.mediaSlots,
       nicheGenericWords: shop.nicheGenericWords,
+      tagNiche: shop.tagNiche,
     }),
     mediaAltTexts,
     seoNotes: parsed.seoNotes || "",
