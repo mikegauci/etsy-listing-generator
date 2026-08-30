@@ -7,6 +7,7 @@ import { getSupabaseAdmin, hasSupabaseConfig } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 import {
   fetchImageBytes,
+  lifestyleUpscaledStoragePath,
   upscaledStoragePath,
   uploadMockupBytes,
 } from "@/lib/mockup-storage";
@@ -18,6 +19,7 @@ const bodySchema = z.object({
   shopId: z.string(),
   runId: z.string().uuid(),
   colorId: z.string().min(1).max(100),
+  sceneId: z.string().min(1).max(100).optional(),
   sourceUrl: z.string().url(),
   colorLabel: z.string().max(100).optional(),
   colorHex: z.string().max(20).optional(),
@@ -50,16 +52,37 @@ export async function POST(request: Request) {
     }
 
     const shop = getShop(input.shopId);
-    if (!shop.mockups) {
+    const isLifestyle = Boolean(input.sceneId);
+
+    if (isLifestyle) {
+      if (!shop.lifestyleMockups) {
+        return NextResponse.json(
+          { error: "This shop has no lifestyle mockup configuration" },
+          { status: 400 }
+        );
+      }
+    } else if (!shop.mockups) {
       return NextResponse.json(
         { error: "This shop has no mockup configuration" },
         { status: 400 }
       );
     }
 
-    const color = shop.mockups.colors.find((c) => c.id === input.colorId);
+    const colors = isLifestyle
+      ? shop.lifestyleMockups!.colors
+      : shop.mockups!.colors;
+    const color = colors.find((c) => c.id === input.colorId);
     if (!color) {
       return NextResponse.json({ error: "Unknown colour" }, { status: 400 });
+    }
+
+    if (isLifestyle) {
+      const scene = shop.lifestyleMockups!.scenes.find(
+        (s) => s.id === input.sceneId
+      );
+      if (!scene) {
+        return NextResponse.json({ error: "Unknown scene" }, { status: 400 });
+      }
     }
 
     let falUrl: string | null = null;
@@ -73,11 +96,14 @@ export async function POST(request: Request) {
 
       if (hasSupabaseConfig()) {
         const { bytes } = await fetchImageBytes(result.url);
-        storagePath = upscaledStoragePath(
-          shop.id,
-          input.runId,
-          input.colorId
-        );
+        storagePath = isLifestyle
+          ? lifestyleUpscaledStoragePath(
+              shop.id,
+              input.runId,
+              input.sceneId!,
+              input.colorId
+            )
+          : upscaledStoragePath(shop.id, input.runId, input.colorId);
         publicUrl = await uploadMockupBytes({
           path: storagePath,
           bytes,
@@ -97,7 +123,7 @@ export async function POST(request: Request) {
       await supabase.from("generated_mockups").insert({
         run_id: input.runId,
         shop_id: shop.id,
-        base_image_id: "upscale",
+        base_image_id: isLifestyle ? input.sceneId! : "upscale",
         color_id: input.colorId,
         color_label: input.colorLabel ?? color.label,
         color_hex: input.colorHex ?? color.hex,
@@ -123,6 +149,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       colorId: input.colorId,
+      sceneId: input.sceneId ?? null,
       falUrl,
       publicUrl,
       resolution: "2K",

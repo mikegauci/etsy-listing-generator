@@ -46,6 +46,23 @@ export type MockupConfig = {
   }) => string;
 };
 
+export type LifestyleScene = {
+  id: string;
+  label: string;
+  hasBaby: boolean;
+  sceneDescription: string;
+};
+
+export type LifestyleMockupConfig = {
+  scenes: LifestyleScene[];
+  colors: MockupColor[];
+  buildPrompt: (opts: {
+    scene: LifestyleScene;
+    color: MockupColor;
+    personalizationName?: string;
+  }) => string;
+};
+
 export type ShopPromptContext = {
   input: GenerateInput;
   referenced: ShopListing[];
@@ -110,6 +127,7 @@ export type ShopConfig = {
     marketplace: MarketplaceListing[]
   ) => ListingOutput;
   mockups: MockupConfig | null;
+  lifestyleMockups: LifestyleMockupConfig | null;
 };
 
 export function normalizeShopId(value: string | null | undefined): ShopId {

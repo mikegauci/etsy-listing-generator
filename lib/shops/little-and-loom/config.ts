@@ -6,6 +6,10 @@ import {
   buildBlanketMockupPrompt,
 } from "../mockup-prompt";
 import {
+  buildLifestyleMockupPrompt,
+  LIFESTYLE_SCENES,
+} from "../lifestyle-mockup-prompt";
+import {
   LOOM_CHECKLIST_CATEGORIES,
   getLoomSeoBriefForSubject,
 } from "./checklist";
@@ -147,6 +151,11 @@ const loomConfigBase: Omit<
       },
     ],
     buildPrompt: buildBlanketMockupPrompt,
+  },
+  lifestyleMockups: {
+    scenes: LIFESTYLE_SCENES,
+    colors: BLANKET_COLORS,
+    buildPrompt: buildLifestyleMockupPrompt,
   },
 };
 

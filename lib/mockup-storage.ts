@@ -46,6 +46,15 @@ export async function fetchImageBytes(url: string): Promise<{
   return { bytes, contentType };
 }
 
+export function lifestyleRunStoragePath(
+  shopId: string,
+  runId: string,
+  sceneId: string,
+  colorId: string
+): string {
+  return `runs/${shopId}/${runId}/lifestyle-${sceneId}-${colorId}.jpg`;
+}
+
 export function runStoragePath(
   shopId: string,
   runId: string,
@@ -62,6 +71,15 @@ export function upscaledStoragePath(
   colorId: string
 ): string {
   return `runs/${shopId}/${runId}/${colorId}-2k.png`;
+}
+
+export function lifestyleUpscaledStoragePath(
+  shopId: string,
+  runId: string,
+  sceneId: string,
+  colorId: string
+): string {
+  return `runs/${shopId}/${runId}/lifestyle-${sceneId}-${colorId}-2k.png`;
 }
 
 export function baseStoragePath(shopId: string, baseId: string): string {

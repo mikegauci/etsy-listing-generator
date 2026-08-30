@@ -21,4 +21,4 @@ export function isValidShopId(value: string): value is ShopId {
 }
 
 export { normalizeShopId };
-export type { ShopConfig, ShopId, MockupColor, MockupBase, MockupConfig } from "./types";
+export type { ShopConfig, ShopId, MockupColor, MockupBase, MockupConfig, LifestyleScene, LifestyleMockupConfig } from "./types";

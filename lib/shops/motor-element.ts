@@ -159,4 +159,5 @@ export const motorElementShop: ShopConfig = {
   getSeoBriefForSubject,
   generateMockListing,
   mockups: null,
+  lifestyleMockups: null,
 };
