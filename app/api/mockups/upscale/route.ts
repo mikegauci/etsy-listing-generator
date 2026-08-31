@@ -5,6 +5,8 @@ import { apiError } from "@/lib/api";
 import { getShop, isValidShopId } from "@/lib/shops";
 import { getSupabaseAdmin, hasSupabaseConfig } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
+import { resizeImageTo2K, UPSCALE_JPEG_QUALITY, UPSCALE_TARGET_PX } from "@/lib/image-resize";
+import { logMockupImageRequest } from "@/lib/mockup-image-log";
 import {
   fetchImageBytes,
   lifestyleUpscaledStoragePath,
@@ -96,6 +98,7 @@ export async function POST(request: Request) {
 
       if (hasSupabaseConfig()) {
         const { bytes } = await fetchImageBytes(result.url);
+        const resizedBytes = await resizeImageTo2K(bytes);
         storagePath = isLifestyle
           ? lifestyleUpscaledStoragePath(
               shop.id,
@@ -106,8 +109,16 @@ export async function POST(request: Request) {
           : upscaledStoragePath(shop.id, input.runId, input.colorId);
         publicUrl = await uploadMockupBytes({
           path: storagePath,
-          bytes,
-          contentType: result.contentType || "image/png",
+          bytes: resizedBytes,
+          contentType: "image/jpeg",
+        });
+        logMockupImageRequest({
+          operation: "upscale-save",
+          provider: "sharp",
+          model: "resize-to-2k",
+          resolution: `${UPSCALE_TARGET_PX}x${UPSCALE_TARGET_PX}`,
+          quality: String(UPSCALE_JPEG_QUALITY),
+          format: "jpeg",
         });
       } else {
         publicUrl = result.url;
@@ -134,7 +145,7 @@ export async function POST(request: Request) {
         model: FAL_UPSCALE_MODEL,
         resolution: "2K",
         aspect_ratio: "1:1",
-        output_format: "png",
+        output_format: "jpeg",
         status,
         error: errorMessage,
       });

@@ -1,4 +1,5 @@
 import OpenAI, { toFile } from "openai";
+import { logMockupImageRequest } from "./mockup-image-log";
 
 export const OPENAI_IMAGE_MODEL =
   process.env.OPENAI_IMAGE_MODEL || "gpt-image-2";
@@ -42,14 +43,51 @@ export async function editLifestyleMockup(opts: {
   artworkBytes: Buffer;
   artworkName: string;
 }): Promise<{ bytes: Buffer; contentType: "image/jpeg" }> {
+  return editMockupImages({
+    prompt: opts.prompt,
+    images: [{ bytes: opts.artworkBytes, name: opts.artworkName }],
+  });
+}
+
+export async function editVariationMockup(opts: {
+  prompt: string;
+  baseBytes: Buffer;
+  baseName: string;
+  artworkBytes: Buffer;
+  artworkName: string;
+}): Promise<{ bytes: Buffer; contentType: "image/jpeg" }> {
+  return editMockupImages({
+    prompt: opts.prompt,
+    images: [
+      { bytes: opts.baseBytes, name: opts.baseName },
+      { bytes: opts.artworkBytes, name: opts.artworkName },
+    ],
+  });
+}
+
+async function editMockupImages(opts: {
+  prompt: string;
+  images: { bytes: Buffer; name: string }[];
+}): Promise<{ bytes: Buffer; contentType: "image/jpeg" }> {
   const client = openAiClient();
-  const image = await toFile(opts.artworkBytes, opts.artworkName, {
-    type: "image/png",
+  const files = await Promise.all(
+    opts.images.map((img) =>
+      toFile(img.bytes, img.name, { type: "image/png" })
+    )
+  );
+
+  logMockupImageRequest({
+    operation: "generate",
+    provider: "openai",
+    model: OPENAI_IMAGE_MODEL,
+    resolution: LIFESTYLE_IMAGE_SETTINGS.size,
+    quality: LIFESTYLE_IMAGE_SETTINGS.quality,
+    format: LIFESTYLE_IMAGE_SETTINGS.outputFormat,
   });
 
   const response = await client.images.edit({
     model: OPENAI_IMAGE_MODEL,
-    image: [image],
+    image: files,
     prompt: opts.prompt,
     size: LIFESTYLE_IMAGE_SETTINGS.size,
     quality: LIFESTYLE_IMAGE_SETTINGS.quality,

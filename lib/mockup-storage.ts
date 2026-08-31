@@ -70,7 +70,7 @@ export function upscaledStoragePath(
   runId: string,
   colorId: string
 ): string {
-  return `runs/${shopId}/${runId}/${colorId}-2k.png`;
+  return `runs/${shopId}/${runId}/${colorId}-2k.jpg`;
 }
 
 export function lifestyleUpscaledStoragePath(
@@ -79,7 +79,7 @@ export function lifestyleUpscaledStoragePath(
   sceneId: string,
   colorId: string
 ): string {
-  return `runs/${shopId}/${runId}/lifestyle-${sceneId}-${colorId}-2k.png`;
+  return `runs/${shopId}/${runId}/lifestyle-${sceneId}-${colorId}-2k.jpg`;
 }
 
 export function baseStoragePath(shopId: string, baseId: string): string {

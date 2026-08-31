@@ -8,22 +8,20 @@ export function buildBlanketMockupPrompt(opts: {
   personalizationName?: string;
 }): string {
   const { base, color, personalizationName } = opts;
-  const fontInstruction = `Set the name in the ${BLANKET_NAME_FONT} typeface (Google Fonts) — flowing connected script with elegant swashes. Use ${BLANKET_NAME_FONT} consistently; do not copy a different font from the original image.`;
-  const textColorInstruction = `Render the embroidered name text in ${color.textHex} thread colour so it contrasts clearly against the ${color.label} (${color.hex}) fleece fabric.`;
+  const fontInstruction = `Use the ${BLANKET_NAME_FONT} script typeface.`;
+  const textColorInstruction = `Render the name in ${color.textHex} against the ${color.label} (${color.hex}) fleece.`;
   const nameSpelling = personalizationName?.trim()
     ? `Spell the name "${personalizationName.trim()}".`
     : "Keep the same name spelling as the original image.";
 
   return [
-    "Edit the first image, a product photograph of a folded fleece baby blanket styled on a round woven mat.",
-    `Change the blanket fabric colour to ${color.label} (${color.hex}). Keep the identical fleece texture, fold lines, edge stitching, shadows and soft daylight.`,
-    "Replace the printed artwork on the blanket with the artwork from the second image. Do not copy the vertical placement of the artwork or name from the first image.",
-    "Place the artwork and embroidered name together as one design unit, centred horizontally on the visible folded blanket face. Reposition that entire unit much higher — roughly 5 cm above where it appears in the original photo. The name sits directly beneath the artwork with the same spacing between them.",
-    `${textColorInstruction} ${fontInstruction} ${nameSpelling}`,
-    "The bottom of the embroidered name must sit well above the lower horizontal fold seam. Leave a wide band of empty fleece below the name before the seam — at least one fifth of the blanket face height. The name must never crowd, touch, or sit near the bottom fold edge.",
-    "Match a similar artwork scale and rotation. Let artwork and name follow the fabric surface and folds so they read as printed and embroidered on the fleece rather than pasted on top.",
-    `Do not change the camera angle, framing or any surrounding prop: ${base.sceneDescription}. Add and remove nothing beyond the blanket colour, artwork, name placement and name styling. No watermarks or borders.`,
-    "Output a clean, photorealistic commercial product photograph.",
+    "Edit the first image: a folded fleece baby blanket on a round woven mat.",
+    `Change only the blanket colour to ${color.label} (${color.hex}), swap in the artwork from the second image, and set the embroidered name. ${textColorInstruction} ${fontInstruction} ${nameSpelling}`,
+    "Keep the first image unchanged otherwise — same crop, camera, lighting, blanket size, folds, and props.",
+    `Props to preserve: ${base.sceneDescription}.`,
+    "Place artwork and name as one unit in the exact same print zone as the original design on the first image — same position, scale, and rotation. Name directly below artwork. Leave clear empty fleece below the name; it must never touch or crowd the lower fold edge.",
+    "Artwork and name must follow the fabric folds so they look printed on the fleece, not pasted on.",
+    "No watermarks or borders.",
   ].join(" ");
 }
 

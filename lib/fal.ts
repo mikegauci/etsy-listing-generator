@@ -1,4 +1,5 @@
 import { fal } from "@fal-ai/client";
+import { logMockupImageRequest } from "./mockup-image-log";
 
 export const FAL_EDIT_MODEL =
   process.env.FAL_IMAGE_MODEL || "fal-ai/nano-banana-2/edit";
@@ -146,6 +147,14 @@ export async function upscaleImageCrisp(
   imageUrl: string
 ): Promise<FalUpscaleResult> {
   ensureFalConfig();
+
+  logMockupImageRequest({
+    operation: "upscale",
+    provider: "fal",
+    model: FAL_UPSCALE_MODEL,
+    resolution: "2K",
+    format: "jpeg",
+  });
 
   const result = await fal.subscribe(FAL_UPSCALE_MODEL, {
     input: { image_url: imageUrl },

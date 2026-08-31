@@ -1,26 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
-  editImage,
-  FAL_EDIT_MODEL,
-  resolveMockupOutput,
-  type FalAspectRatio,
-  type FalOutputFormat,
-  type FalResolution,
-} from "@/lib/fal";
+  editVariationMockup,
+  formatOpenAiImageError,
+  LIFESTYLE_IMAGE_SETTINGS,
+  OPENAI_IMAGE_MODEL,
+} from "@/lib/openai-image";
 import { apiError } from "@/lib/api";
 import { getShop, isValidShopId } from "@/lib/shops";
 import { getSupabaseAdmin, hasSupabaseConfig } from "@/lib/supabase";
 import { rateLimit } from "@/lib/rate-limit";
 import {
-  ensureBaseImageInStorage,
   fetchImageBytes,
-  mimeForFormat,
   runStoragePath,
   uploadMockupBytes,
 } from "@/lib/mockup-storage";
 
-export const maxDuration = 120;
+export const maxDuration = 180;
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
@@ -32,9 +28,6 @@ const bodySchema = z.object({
   artworkName: z.string().max(300).optional(),
   personalizationName: z.string().max(100).optional(),
   notes: z.string().max(500).optional(),
-  resolution: z.enum(["0.5K", "1K", "2K", "4K"]).optional(),
-  aspectRatio: z.string().optional(),
-  outputFormat: z.enum(["jpeg", "png", "webp"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -77,57 +70,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unknown base or colour" }, { status: 400 });
     }
 
-    const output = resolveMockupOutput({
-      resolution: input.resolution as FalResolution | undefined,
-      aspectRatio: input.aspectRatio as FalAspectRatio | undefined,
-      outputFormat: input.outputFormat as FalOutputFormat | undefined,
-    });
-
-    const baseUrl = await ensureBaseImageInStorage({
-      shopId: shop.id,
-      baseId: base.id,
-      sourceUrl: base.url,
-    });
-
     const prompt = shop.mockups.buildPrompt({
       base,
       color,
       personalizationName: input.personalizationName,
     });
 
-    let falUrl: string | null = null;
     let publicUrl: string | null = null;
     let storagePath: string | null = null;
     let errorMessage: string | null = null;
 
     try {
-      const result = await editImage({
+      const [{ bytes: baseBytes }, { bytes: artworkBytes }] = await Promise.all([
+        fetchImageBytes(base.url),
+        fetchImageBytes(input.artworkUrl),
+      ]);
+
+      const result = await editVariationMockup({
         prompt,
-        imageUrls: [baseUrl, input.artworkUrl],
-        resolution: output.resolution,
-        aspectRatio: output.aspectRatio,
-        outputFormat: output.outputFormat,
+        baseBytes: Buffer.from(baseBytes),
+        baseName: `${base.id}.png`,
+        artworkBytes: Buffer.from(artworkBytes),
+        artworkName: input.artworkName || "artwork.png",
       });
-      falUrl = result.url;
 
       if (hasSupabaseConfig()) {
-        const { bytes } = await fetchImageBytes(result.url);
         storagePath = runStoragePath(
           shop.id,
           input.runId,
           color.id,
-          output.outputFormat
+          LIFESTYLE_IMAGE_SETTINGS.outputFormat
         );
         publicUrl = await uploadMockupBytes({
           path: storagePath,
-          bytes,
-          contentType: mimeForFormat(output.outputFormat),
+          bytes: result.bytes,
+          contentType: result.contentType,
         });
       } else {
-        publicUrl = result.url;
+        const b64 = result.bytes.toString("base64");
+        publicUrl = `data:${result.contentType};base64,${b64}`;
       }
     } catch (err) {
-      errorMessage = err instanceof Error ? err.message : "Generation failed";
+      errorMessage = formatOpenAiImageError(err);
     }
 
     const status = errorMessage ? "failed" : "succeeded";
@@ -145,13 +129,13 @@ export async function POST(request: Request) {
         artwork_url: input.artworkUrl,
         artwork_name: input.artworkName ?? null,
         personalization_name: input.personalizationName ?? null,
-        fal_url: falUrl,
+        fal_url: null,
         storage_path: storagePath,
         public_url: publicUrl,
-        model: FAL_EDIT_MODEL,
-        resolution: output.resolution,
-        aspect_ratio: output.aspectRatio,
-        output_format: output.outputFormat,
+        model: OPENAI_IMAGE_MODEL,
+        resolution: LIFESTYLE_IMAGE_SETTINGS.size,
+        aspect_ratio: "1:1",
+        output_format: LIFESTYLE_IMAGE_SETTINGS.outputFormat,
         status,
         error: errorMessage,
       });
@@ -169,11 +153,10 @@ export async function POST(request: Request) {
       colorLabel: color.label,
       colorHex: color.hex,
       prompt,
-      falUrl,
       publicUrl,
-      resolution: output.resolution,
-      aspectRatio: output.aspectRatio,
-      outputFormat: output.outputFormat,
+      resolution: LIFESTYLE_IMAGE_SETTINGS.size,
+      aspectRatio: "1:1",
+      outputFormat: LIFESTYLE_IMAGE_SETTINGS.outputFormat,
       status,
     });
   } catch (err) {

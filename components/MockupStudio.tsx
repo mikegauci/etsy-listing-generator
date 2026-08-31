@@ -35,13 +35,37 @@ type LifestyleResult = {
   error?: string;
 };
 
-const RESOLUTION_OPTIONS = ["0.5K", "1K", "2K", "4K"] as const;
+const VARIATION_RESOLUTION = "1024";
 
 const RANDOM_COLOR_SWATCH =
   "conic-gradient(#E8DBCF, #6E5235, #96BFE7, #F4C2C2, #A3B68A, #E8DBCF)";
 
-function pickRandomBlanketColor(colors: MockupColor[]): MockupColor {
-  return colors[Math.floor(Math.random() * colors.length)];
+function shuffleArray<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function assignRandomBlanketColors(
+  colors: MockupColor[],
+  count: number
+): MockupColor[] {
+  if (colors.length === 0 || count === 0) return [];
+
+  const shuffled = shuffleArray(colors);
+
+  if (count <= shuffled.length) {
+    return shuffled.slice(0, count);
+  }
+
+  const assigned = [...shuffled];
+  for (let i = shuffled.length; i < count; i++) {
+    assigned.push(colors[Math.floor(Math.random() * colors.length)]);
+  }
+  return shuffleArray(assigned);
 }
 
 function makeRunId(): string {
@@ -100,8 +124,6 @@ export function MockupStudio() {
   const [artworkFile, setArtworkFile] = useState<File | null>(null);
   const [artworkPreview, setArtworkPreview] = useState<string | null>(null);
   const [personalizationName, setPersonalizationName] = useState("");
-  const [resolution, setResolution] =
-    useState<(typeof RESOLUTION_OPTIONS)[number]>("0.5K");
   const [selectedColors, setSelectedColors] = useState<string[]>(
     mockups?.colors.map((c) => c.id) ??
       lifestyleMockups?.colors.map((c) => c.id) ??
@@ -291,9 +313,6 @@ export function MockupStudio() {
           artworkUrl: opts.artworkUrl,
           artworkName: opts.artworkName,
           personalizationName: personalizationName.trim() || undefined,
-          resolution,
-          aspectRatio: "1:1",
-          outputFormat: "jpeg",
         }),
       });
       const data = await res.json();
@@ -632,17 +651,20 @@ export function MockupStudio() {
       }
 
       const lifestyleJobs = lifestyleRandomColor
-        ? selectedScenes.flatMap((sceneId) => {
-            const scene = scenesById.get(sceneId);
-            if (!scene) return [];
-            return [
-              {
-                scene,
-                color: pickRandomBlanketColor(activeColors),
-                resultKey: lifestyleRandomResultKey(sceneId),
-              },
-            ];
-          })
+        ? (() => {
+            const scenes = selectedScenes
+              .map((sceneId) => scenesById.get(sceneId))
+              .filter((scene): scene is LifestyleScene => Boolean(scene));
+            const colorAssignments = assignRandomBlanketColors(
+              activeColors,
+              scenes.length
+            );
+            return scenes.map((scene, index) => ({
+              scene,
+              color: colorAssignments[index],
+              resultKey: lifestyleRandomResultKey(scene.id),
+            }));
+          })()
         : lifestyleDisplayItems
             .filter((item): item is typeof item & { color: MockupColor } =>
               Boolean(item.color)
@@ -694,8 +716,8 @@ export function MockupStudio() {
         {mode === "variation" ? (
           <p className="mt-1 text-sm text-zinc-500">
             Upload artwork, pick fleece colours, and generate square JPEG colour
-            variations via FAL nano-banana-2/edit (currently {resolution}, 1:1).
-            Upscale approved results to 2K with Recraft Crisp when ready.
+            variations via OpenAI gpt-image-2 (1024×1024, 1:1). Upscale approved
+            results to 2K with Recraft Crisp when ready.
           </p>
         ) : (
           <p className="mt-1 text-sm text-zinc-500">
@@ -788,27 +810,6 @@ export function MockupStudio() {
                 value={personalizationName}
                 onChange={(e) => setPersonalizationName(e.target.value)}
               />
-            </label>
-
-            <label className="block space-y-1">
-              <span className="text-xs uppercase tracking-wide text-zinc-500">
-                Resolution
-              </span>
-              <select
-                className={fieldClass}
-                value={resolution}
-                onChange={(e) =>
-                  setResolution(
-                    e.target.value as (typeof RESOLUTION_OPTIONS)[number]
-                  )
-                }
-              >
-                {RESOLUTION_OPTIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
             </label>
 
             <fieldset className="space-y-2">
@@ -946,7 +947,7 @@ export function MockupStudio() {
                                     color,
                                     result.upscaledUrl!,
                                     "2k",
-                                    "png"
+                                    "jpg"
                                   )
                                 }
                               >
@@ -963,7 +964,7 @@ export function MockupStudio() {
                                   downloadVariation(
                                     color,
                                     result.publicUrl!,
-                                    resolution.toLowerCase(),
+                                    VARIATION_RESOLUTION,
                                     "jpg"
                                   )
                                 }
@@ -1010,14 +1011,14 @@ export function MockupStudio() {
                                 downloadVariation(
                                   color,
                                   result.publicUrl!,
-                                  resolution.toLowerCase(),
+                                  VARIATION_RESOLUTION,
                                   "jpg"
                                 )
                               }
                             >
                               {downloadingKey === color.id
                                 ? "Downloading…"
-                                : `Download preview (${resolution})`}
+                                : `Download preview (${VARIATION_RESOLUTION})`}
                             </button>
                           )}
                         </div>
